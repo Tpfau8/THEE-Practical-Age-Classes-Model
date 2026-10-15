@@ -46,36 +46,42 @@ This is modeled by drawing a Poisson random variable according to the expected a
 
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
-simulate_one_gen <- function(N_a0, N_j0, R_a, S_j, S_a){
-  N_jt <- rpois(1, R_a * N_a0)
-  N_at <- rpois(1, S_j * N_j0 + S_a * N_a0)
+simulate_one_gen <- function(N_j0, N_a0, R_a, S_j, S_a){
+  N_jt <- rpois(1, R_a * N_a0) #calculating number of juvenile individuals. Initial adult population multiplied with Reproduction rate
+  N_at <- rpois(1, S_j * N_j0 + S_a * N_a0) #calculating number of adult individuals
   return(c(N_jt, N_at))
 }
 print(simulate_one_gen(100, 100, 2, 0.3, 0.6))
 ```
 
-
-```{r}
-simulate_one_gen <- function(N_a, N_A, decay_rate, sel_coeff, mut_rate) {
-  # draw offspring according to Poisson distribution
-  offsp_a <- rpois(1, N_a * (1-decay_rate))
-  offsp_A <- rpois(1, N_A * (1-decay_rate+sel_coeff))
-  # draw new mutants according to Poisson distribution
-  mut_a_to_A <- rpois(1, offsp_a * mut_rate)
-  
-  # determine new population sizes of wild type and mutant
-  N_a_new <- max(offsp_a - mut_a_to_A, 0)
-  N_A_new <-  offsp_A + mut_a_to_A
-  
-  return(c(N_a_new, N_A_new))
-}
-# Test the function
-print(simulate_one_gen(100,0,0.1,0.2,0.01))
-```
-
 ## Simulate a population trajectory
 
 We can now track the dynamics of the population from one generation to another, but this is not enough. We want to follow the population from time 0 until it either is rescued or goes extinct. This is what the following function does.
+
+```{r}
+simulate_pop <- function(N_j0, N_a0, R_a, S_j, S_a, t_max) {
+   # Create the vector in which to save the results
+  pop_vector <- c(N_j0, N_a0)
+  # initiate the variables
+  pop_new <- c(N_j0, N_a0)
+  
+  # run the simulation until generation t_max
+  for (i in 1:t_max+1) {
+    # redefine the current population one generation later
+    pop_new <- simulate_one_gen(pop_new[1],pop_new[2], R_a, S_j, S_a)
+    
+    # add the new population sizes to the output vector
+    pop_vector <- rbind(pop_vector,pop_new)
+    # condition to stop the simulation before t_max: either the population exceeds 1.5 times the original population size, or it goes extinct
+    if (pop_new[1]+pop_new[2]>=10*(N_j0+ N_a0) | pop_new[1]+pop_new[2]==0) break }
+  
+  return(pop_vector)
+}
+
+
+ print(simulate_pop(100, 100, 2, 0.3, 0.6,10))
+```
+
 
 ```{r}
 simulate_pop <- function(N_init_a, N_init_A, decay_rate, sel_coeff, mut_rate, t_max) {
