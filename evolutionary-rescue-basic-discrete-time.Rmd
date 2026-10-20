@@ -44,6 +44,7 @@ offsp_a \<- rpois(1, N_a \* (1-decay_rate))
 
 This is modeled by drawing a Poisson random variable according to the expected absolute number $N_a \cdot (1-r)$ of wild-type individuals, where $r$ is the decay rate of the wild type, and $N_A \cdot (1-r+s)$ of mutant individuals, where $s$ is the selective advantage of the mutant over the wild time. Then mutation from $a$ to $A$ occurs as a Poisson random variable according to the given mutation rate. This defines the composition of the population at time $t+1$.
 
+
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
 simulate_one_gen <- function(N_j0, N_a0, R_a, S_j, S_a){
@@ -51,7 +52,7 @@ simulate_one_gen <- function(N_j0, N_a0, R_a, S_j, S_a){
   N_at <- rpois(1, S_j * N_j0 + S_a * N_a0) #calculating number of adult individuals
   return(c(N_jt, N_at))
 }
-print(simulate_one_gen(100, 100, 2, 0.3, 0.6))
+print(simulate_one_gen(100, 100, 2, 0.1, 0.6))
 ```
 
 ## Simulate a population trajectory
@@ -79,7 +80,7 @@ simulate_pop <- function(N_j0, N_a0, R_a, S_j, S_a, t_max) {
 }
 
 
- print(simulate_pop(100, 100, 2, 0.3, 0.6,10))
+ print(simulate_pop(100, 100, 2, 0.202, 0.6, 1500))
 ```
 
 
