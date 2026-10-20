@@ -76,6 +76,10 @@ simulate_pop <- function(N_j0, N_a0, R_a, S_j, S_a, t_max) {
     # condition to stop the simulation before t_max: either the population exceeds 1.5 times the original population size, or it goes extinct
     if (pop_new[1]+pop_new[2]>=10*(N_j0+ N_a0) | pop_new[1]+pop_new[2]==0) break }
   
+  # add row and column names
+  colnames(pop_vector) <- c("AC1", "AC2")
+  rownames(pop_vector) <- (0:t_max)[1:length(pop_vector[,1])]
+  
   return(pop_vector)
 }
 
