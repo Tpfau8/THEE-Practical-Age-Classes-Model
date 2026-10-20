@@ -67,31 +67,31 @@ print(simulate_one_gen(100, 100, 50, 50, 2, 2, 0.1,0.1, 0.6, 0.6, 0.02))
 We can now track the dynamics of the population from one generation to another, but this is not enough. We want to follow the population from time 0 until it either is rescued or goes extinct. This is what the following function does.
 
 ```{r}
-simulate_pop <- function(N_j0, N_a0, R_a, S_j, S_a, t_max) {
+simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max) {
    # Create the vector in which to save the results
-  pop_vector <- c(N_j0, N_a0)
+  pop_vector <- c(N_j0, N_a0, N_j0M, N_a0M) 
   # initiate the variables
-  pop_new <- c(N_j0, N_a0)
+  pop_new <- c(N_j0, N_a0, N_j0M, N_a0M)
   
   # run the simulation until generation t_max
   for (i in 1:t_max+1) {
     # redefine the current population one generation later
-    pop_new <- simulate_one_gen(pop_new[1],pop_new[2], R_a, S_j, S_a)
+    pop_new <- simulate_one_gen(pop_new[1],pop_new[2],pop_new[3],pop_new[4], R_a,R_aM, S_j, S_jM, S_a, S_aM, mu)
     
     # add the new population sizes to the output vector
     pop_vector <- rbind(pop_vector,pop_new)
     # condition to stop the simulation before t_max: either the population exceeds 1.5 times the original population size, or it goes extinct
-    if (pop_new[1]+pop_new[2]>=10*(N_j0+ N_a0) | pop_new[1]+pop_new[2]==0) break }
+    if (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4] >=10*(N_j0+ N_a0 + N_j0M+ N_a0M) | pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4]==0) break }
   
   # add row and column names
-  colnames(pop_vector) <- c("AC1", "AC2")
+  colnames(pop_vector) <- c("AC1", "AC2", "AC1M", "AC2M")
   rownames(pop_vector) <- (0:t_max)[1:length(pop_vector[,1])]
   
   return(pop_vector)
 }
 
 
- print(simulate_pop(100, 100, 2, 0.202, 0.6, 1500))
+ print(tail(simulate_pop(100, 100, 0,0, 1.8,2.5, 0.2,0.2, 0.6,0.6, 0.009, 1500)))
 ```
 
 ```{r}
