@@ -126,8 +126,8 @@ As you can see if you simulate and plot the output several times, there is a lot
 -   time at which the rescue mutation occurs first if it rescues, vs. if it doesn't rescue, dependent on initial population size and mutation rate
 -   time until the population has recovered in case it becomes rescued, dependent on mutation rate and selection coefficient
 -   ...
-
-```{# set some parameters to fixed values}
+```{r}
+# set some parameters to fixed values
 init_a <- 100
 init_A <- 0
 m_rate <- 0.001
