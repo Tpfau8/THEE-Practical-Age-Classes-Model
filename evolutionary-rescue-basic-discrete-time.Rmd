@@ -13,26 +13,26 @@ In this notebook, we are implementing simulations of evolutionary rescue by a si
 
 ## List of variables and parameters
 
-- Variables
-  - Population sizes per age class and genotype
-    - Age class 1
-      - $N_{ac1a}$
-      - $N_{ac1A}$
-    - Age class 2
-      - $N_{ac2a}$
-      - $N_{ac2A}$
-- Parameters
-  - Initial population sizes per age class and genotype
-    - Age class 1
-      - $IN_{ac1a}$ (should be a positive integer)
-      - $IN_{ac1A}$ (should be a non-negative integer)
-    - Age class 2
-      - $IN_{ac2a}$ (should be a positive integer)
-      - $IN_{ac2A}$ (should be a non-negative integer)
-  - `decay_rate` detrimental effect of the environment on the wild type (i.e., the wild-type population decays at this rate; should be \>0 to induce potential extinction)
-  - `sel_coeff` selective advantage of the mutant over the wild type (should be \> decay_rate to allow for evolutionary rescue)
-  - `mut_rate` mutation rate from the wild type to the mutant genotype (should be \>0 and small)
-  - `t_max` number of generations after which to stop the simulation (should be an integer \>0; this is not a model parameter but a setting for the simulations). In the code presented here, the simulation stops automatically if the population goes extinct, or if it recovers and exceeds 10 times the original total population size, so `t_max` can be set to a large value without creating extremely long simulation times.
+-   Variables
+    -   Population sizes per age class and genotype
+        -   Age class 1
+            -   $N_{ac1a}$
+            -   $N_{ac1A}$
+        -   Age class 2
+            -   $N_{ac2a}$
+            -   $N_{ac2A}$
+-   Parameters
+    -   Initial population sizes per age class and genotype
+        -   Age class 1
+            -   $IN_{ac1a}$ (should be a positive integer)
+            -   $IN_{ac1A}$ (should be a non-negative integer)
+        -   Age class 2
+            -   $IN_{ac2a}$ (should be a positive integer)
+            -   $IN_{ac2A}$ (should be a non-negative integer)
+    -   `decay_rate` detrimental effect of the environment on the wild type (i.e., the wild-type population decays at this rate; should be \>0 to induce potential extinction)
+    -   `sel_coeff` selective advantage of the mutant over the wild type (should be \> decay_rate to allow for evolutionary rescue)
+    -   `mut_rate` mutation rate from the wild type to the mutant genotype (should be \>0 and small)
+    -   `t_max` number of generations after which to stop the simulation (should be an integer \>0; this is not a model parameter but a setting for the simulations). In the code presented here, the simulation stops automatically if the population goes extinct, or if it recovers and exceeds 10 times the original total population size, so `t_max` can be set to a large value without creating extremely long simulation times.
 
 ## Simulate one generation of population size change
 
@@ -44,15 +44,22 @@ offsp_a \<- rpois(1, N_a \* (1-decay_rate))
 
 This is modeled by drawing a Poisson random variable according to the expected absolute number $N_a \cdot (1-r)$ of wild-type individuals, where $r$ is the decay rate of the wild type, and $N_A \cdot (1-r+s)$ of mutant individuals, where $s$ is the selective advantage of the mutant over the wild time. Then mutation from $a$ to $A$ occurs as a Poisson random variable according to the given mutation rate. This defines the composition of the population at time $t+1$.
 
-
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
-simulate_one_gen <- function(N_j0, N_a0, R_a, S_j, S_a){
-  N_jt <- rpois(1, R_a * N_a0) #calculating number of juvenile individuals. Initial adult population multiplied with Reproduction rate
+simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu){
+  
+  New_jtM <- rpois(1, N_a0 * mu * R_a)
+  N_jt <- rpois(1, R_a * N_a0) - New_jtM #calculating number of WT juvenile individuals. 
   N_at <- rpois(1, S_j * N_j0 + S_a * N_a0) #calculating number of adult individuals
-  return(c(N_jt, N_at))
+  
+  
+  N_jtM <- rpois(1, N_a0M * R_aM) + New_jtM # calculating number of Mutant juveniles
+  N_atM <- rpois(1, N_j0M * S_jM + S_aM * N_a0M) # calculating number of Mutant adults
+  
+  
+  return(c(N_jt, N_at, N_jtM, N_atM))
 }
-print(simulate_one_gen(100, 100, 2, 0.1, 0.6))
+print(simulate_one_gen(100, 100, 50, 50, 2, 2, 0.1,0.1, 0.6, 0.6, 0.02))
 ```
 
 ## Simulate a population trajectory
@@ -86,7 +93,6 @@ simulate_pop <- function(N_j0, N_a0, R_a, S_j, S_a, t_max) {
 
  print(simulate_pop(100, 100, 2, 0.202, 0.6, 1500))
 ```
-
 
 ```{r}
 simulate_pop <- function(N_init_a, N_init_A, decay_rate, sel_coeff, mut_rate, t_max) {
@@ -133,18 +139,18 @@ lines(x_range,output[,2], col="red")
 
 ### Questions
 
-- What is the difference between `pop_vector` and `pop_new`?
-- What is the condition that breaks the loop good for? What are its disadvantages?
-- What does the function `tail` do?
+-   What is the difference between `pop_vector` and `pop_new`?
+-   What is the condition that breaks the loop good for? What are its disadvantages?
+-   What does the function `tail` do?
 
 ## A small analysis
 
 As you can see if you simulate and plot the output several times, there is a lot of stochasticity/variation in the outcome. Therefore, to get interpretable results, we have to run the simulation many times and summarize the outcome depending on the question of our study. Here I am showing an example in which we record the time and the value of the lowest population size (or the time of extinction, if the population size eventually goes to 0). Usually, we want to study this for a range of model parameters; here I am varying the decay rate and the selection coefficient. Other (maybe more interesting) features to study would be the following:
 
-- rescue probability dependent on initial frequency and selection coefficient
-- time at which the rescue mutation occurs first if it rescues, vs. if it doesn't rescue, dependent on initial population size and mutation rate
-- time until the population has recovered in case it becomes rescued, dependent on mutation rate and selection coefficient
-- ...
+-   rescue probability dependent on initial frequency and selection coefficient
+-   time at which the rescue mutation occurs first if it rescues, vs. if it doesn't rescue, dependent on initial population size and mutation rate
+-   time until the population has recovered in case it becomes rescued, dependent on mutation rate and selection coefficient
+-   ...
 
 ```{r}
 # set some parameters to fixed values
@@ -195,9 +201,9 @@ print(head(data_table))
 
 ### Questions
 
-- Why does this code block run much more slowly than the others?
-- Why is it useful to define the parameters at the beginning (e.g. `init_a=100`) and use their names rather than the numbers throughout the rest of the code?
-- What does the function `which` do?
+-   Why does this code block run much more slowly than the others?
+-   Why is it useful to define the parameters at the beginning (e.g. `init_a=100`) and use their names rather than the numbers throughout the rest of the code?
+-   What does the function `which` do?
 
 ## Next steps
 
