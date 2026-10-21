@@ -89,7 +89,7 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
   
   return(pop_vector)
 }
-print(tail(simulate_pop(100, 100, 0,0, 1.8,2.5, 0.2,0.2, 0.6,0.6, 0.009, 1500)))
+print(tail(simulate_pop(100, 100, 0,0, 2.5,2.5, 0.2,0.2, 0.6,0.6, 0.001, 1500)))
 
 
  
@@ -97,7 +97,7 @@ print(tail(simulate_pop(100, 100, 0,0, 1.8,2.5, 0.2,0.2, 0.6,0.6, 0.009, 1500)))
 
 ```{r}
 output <- simulate_pop(100, 100, 0,0, 1.8,2.5, 0.2,0.2, 0.6,0.6, 0.009, 1500)
-
+print(tail(output))
 
 x_range <- 0:(length(output[,1])-1)
 # this plots the total population size
