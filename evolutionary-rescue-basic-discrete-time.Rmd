@@ -121,9 +121,19 @@ df_long <- pivot_longer(
 
 print(df_long)
 
-ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class)) +
+ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, linetype = Age_Class)) +
   geom_line(linewidth = 1) +
-  labs(title = "Age structure in evolutionary rescue model", color = "Age classes")
+  scale_color_manual(values = c(
+    "AC1" = "lightgreen",
+    "AC2" = "darkgreen",
+    "AC1M" = "maroon",
+    "AC2M" = "red")) +
+  labs(title = "Age structure in evolutionary rescue model", color = "Age Classes")+
+  scale_linetype_manual(values = c(
+    "AC1" = 1,
+    "AC1M" = 1,
+    "AC2" = 2,
+    "AC2M" = 2))
   
 
 
