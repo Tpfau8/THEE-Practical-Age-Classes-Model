@@ -98,7 +98,7 @@ library(dplyr)
 library(tidyr)
 
 # having the simulation set as a variable
-sim_data <- simulate_pop(100, 100, 0, 0, 1,5, 0.2, 0.2, 0.6, 0.6, 0.01, 1500)
+sim_data <- simulate_pop(100, 100, 0, 0, 2,2, 0.2, 0.2, 0.6, 0.8, 0.01, 1500)
 
 #Convert matrix to Dataframe to help analysis
 df <- as.data.frame(sim_data)
@@ -126,9 +126,9 @@ ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, line
   scale_color_manual(values = c(
     "AC1" = "lightgreen",
     "AC2" = "darkgreen",
-    "AC1M" = "maroon",
-    "AC2M" = "red")) +
-  labs(title = "Age structure in evolutionary rescue model", color = "Age Classes")+
+    "AC1M" = "red",
+    "AC2M" = "darkred")) +
+  labs(title = "Simulating Evolutionary Rescue with 2 Age classes", subtitle = "Mutant Adults with higher survivability" , x = "Generations", y = "Population Size", color = "Age Classes", linetype = "Age Classes")+
   scale_linetype_manual(values = c(
     "AC1" = 1,
     "AC1M" = 1,
