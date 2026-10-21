@@ -7,20 +7,21 @@ output:
     df_print: paged
 ---
 
-#Simulate one generation
+# Simulate one generation
+There was an error because some values were negative. That's why we put the max() at some places. 
 
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
 simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu){
-  
+  N_a0 <- max(N_a0, 0)
   New_jtM <- rpois(1, N_a0 * mu * R_a)
-  N_jt <- rpois(1, R_a * N_a0) - New_jtM #calculating number of WT juvenile individuals. 
+  N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) #calculating number of WT juvenile individuals.
+  
   N_at <- rpois(1, S_j * N_j0 + S_a * N_a0) #calculating number of adult individuals
   
   
   N_jtM <- rpois(1, N_a0M * R_aM) + New_jtM # calculating number of Mutant juveniles
   N_atM <- rpois(1, N_j0M * S_jM + S_aM * N_a0M) # calculating number of Mutant adults
-  
   
   return(c(N_jt, N_at, N_jtM, N_atM))
 }
@@ -58,7 +59,7 @@ print(tail(simulate_pop(100, 100, 0,0, 2.5,2.5, 0.2,0.2, 0.6,0.6, 0.001, 1500)))
  
 ```
 
-#basic plot with base r
+# basic plot with base r
 
 ```{r}
 output <- simulate_pop(100, 100, 0,0, 1.8,2.5, 0.2,0.2, 0.6,0.6, 0.009, 1500)
@@ -82,13 +83,12 @@ legend("right",
 ```
 
 # pro version of plots by tobias with ggplot()
+
 ```{r}
 install.packages("dplyr")
 install.packages("tidyr")
 install.packages("ggplot2")
 ```
-
-
 
 ```{r}
 
@@ -129,9 +129,10 @@ ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class)) +
 
 ```
 
+## Compare juvenile- vs. adult survival rate increase in mutants
 
+We have to figure out which ranges of survival rates make sense. So the growth rate of the wildtypes should be below 1 and for the mutants it should be more than 1 probably.
 
-## Compare juvenile- vs. adult survival rate increase in mutants 
 ```{r}
 #N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max
 # set some parameters to fixed values
@@ -141,8 +142,6 @@ N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
 R_aM <- 2
-S_j <- 0.2
-S_a <- 0.6
 mu <- 0.01
 t_max <- 1000
 
@@ -157,16 +156,15 @@ data_table <- c()
 
 # Doing a parameter sweep
 for (selection_on_jM in c(TRUE,FALSE)){
-  for (s_coeff in seq(1,1.1, 0.01)){
+  for (s_coeff in seq(1, 2, 0.01)){
     S_j <- 0.2
     S_jM <- S_j * ifelse(selection_on_jM, s_coeff, 1)
-    S_a <- 0.6
+    S_a <- 0.5
     S_aM <- S_a * ifelse(selection_on_jM, 1, s_coeff)
     
-    print(paste(selection_on_jM, S_jM, S_aM))
+   
     i<-1
     repeat {
-      print(i)
       # increase counter by one
       i<-i+1
       # run the simulation once
@@ -186,10 +184,8 @@ for (selection_on_jM in c(TRUE,FALSE)){
 }
  
 # define column names of data table
-colnames(data_table) <- c("s_coeff","juveniles or adults","min_gen","no_min")
+colnames(data_table) <- c("s_coeff","ac_s","min_gen","no_min")
 # show the first lines of the output
-print(head(data_table))
-print(tail(data_table))
 
 
 
@@ -219,7 +215,15 @@ l_matrix_Mut
 growth_rate_Mut
 
 
+df <- as.data.frame(data_table)
+plot_table <- c()
+df$extinct <- df$no_min == 0
+
+for(s in unique(df$s_coeff)){
+  df_filter <- df[df$s_coeff == s & df$ac_s == "on_juv",]
+  print(mean(df_filter$extinct))
+  print(s)
+}
+
+
 ```
-
-
-
