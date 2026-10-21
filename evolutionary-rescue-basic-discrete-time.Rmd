@@ -110,7 +110,60 @@ lines(x_range,output[,2], col="red")
 lines(x_range,output[,3], col = "green")
 #number of adult mutant individuals
 lines(x_range,output[,4], col = "yellow")
+
+legend("right",
+       c("WT Juvenile indidviduals", "WT Adult individuals", "Juvenile Mutant individuals", "Adult mutant individuals"),
+       text.font = 3)
 ```
+
+```{r}
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("ggplot2")
+```
+
+
+
+```{r}
+
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# having the simulation set as a variable
+sim_data <- simulate_pop(100, 100, 0, 0, 1,5, 0.2, 0.2, 0.6, 0.6, 0.01, 1500)
+
+#Convert matrix to Dataframe to help analysis
+df <- as.data.frame(sim_data)
+
+# these steps were generated using ai help: The rownames are the Generation numbers. Let's make them a proper column.
+df$Generation <- as.numeric(rownames(df))
+
+# Reshape from Wide to Long format for ggplot
+# This creates a column "Age_Class" (AC1, AC2, etc.) and "Population_Size". 
+
+#pivot_longer syntaxc first define what data you are looking at. here we are looking at df our data frame. cols defines which columns to convert into the long format. we want to convert our Age class collumns into long format. names_to defines what the new column name should be. 
+
+df_long <- pivot_longer(
+  df, 
+  cols = c("AC1", "AC2", "AC1M", "AC2M"), 
+  names_to = "Age_Class", 
+  values_to = "Population_Size"
+)
+
+
+print(df_long)
+
+ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class)) +
+  geom_line(linewidth = 1) +
+  labs(title = "Age structure in evolutionary rescue model", color = "Age classes")
+  
+
+
+```
+
+
 
 ### Questions
 
