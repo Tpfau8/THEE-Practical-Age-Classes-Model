@@ -159,14 +159,14 @@ t_max <- 1000
 
 
 # determine how often to run the simulation for each set of parameters
-no_replicates <- 100
+no_replicates <- 1000
 
 # initialize data table - where to collect the results
 data_table <- c()
 
 # Doing a parameter sweep
 for (selection_on_jM in c(TRUE,FALSE)){
-  for (s_coeff in seq(1, 2, 0.01)){
+  for (s_coeff in seq(1, 2, 0.05)){
     S_j <- 0.2
     S_jM <- S_j * ifelse(selection_on_jM, s_coeff, 1)
     S_a <- 0.5
@@ -186,7 +186,7 @@ for (selection_on_jM in c(TRUE,FALSE)){
       # determine (first) generation at which this population size occurred
       min_gen <- as.numeric(which(total_size==min_size)[1])
       # enter the data into the table
-      data_table <- rbind(data_table,c(s_coeff,ifelse(selection_on_jM, "on_juv", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
+      data_table <- rbind(data_table,c(s_coeff,ifelse(selection_on_jM, "on_juveniles", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
       # stop the repeated computation after no_replicates times
       if(i>no_replicates) break
     }
@@ -249,6 +249,28 @@ colnames(plot_table) <- c("resque prob.","ac_s","s_coeff")
 
 
 ```
+#plotting Survivability and rescue probability
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+plot_table_analyze <- as.data.frame(plot_table)
+
+
+
+ggplot(plot_table, aes(x = s_coeff , y = `resque prob.` , color = ac_s)) +
+  geom_point()+
+  labs(x = "selection coefficient", y = "rescue probabability", title = "Effect of Varying Selection coefficeints in adults vs juveniles on rescue probability", color = "Which age group")
+
+
+
+
+
+
+```
+
+
 
 
 #comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
