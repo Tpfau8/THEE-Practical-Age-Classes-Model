@@ -224,16 +224,28 @@ growth_rate_Mut <- max(Re(all_eigen$values))
 l_matrix_Mut
 growth_rate_Mut
 
-
+#making the matrix a table and making some values numeric to be able to calculate with them
 df <- as.data.frame(data_table)
-plot_table <- c()
-df$extinct <- df$no_min == 0
+df$s_coeff <- as.numeric(df$s_coeff)
+df$min_gen <- as.numeric(df$min_gen)
+df$no_min <- as.numeric(df$no_min)
 
-for(s in unique(df$s_coeff)){
-  df_filter <- df[df$s_coeff == s & df$ac_s == "on_juv",]
-  print(mean(df_filter$extinct))
-  print(s)
+df$rescued <- df$no_min != 0
+
+#try if the basic principle of gettint the resque-probability works
+df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juv",]
+print(mean(df_filter$rescued))
+
+#creating a empty table to put the stuff to plot in
+plot_table <- c()
+for(x in unique(df$ac_s)){
+ for(s in unique(df$s_coeff)){
+  df_filter <- df[df$s_coeff == s & df$ac_s == x,]
+  plot_table <- rbind(plot_table, c(mean(df_filter$rescued), x, s))
+ } 
 }
+
+colnames(plot_table) <- c("resque prob.","ac_s","s_coeff")
 
 
 ```
