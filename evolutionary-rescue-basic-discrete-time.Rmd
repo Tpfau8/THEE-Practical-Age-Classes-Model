@@ -237,3 +237,103 @@ for(s in unique(df$s_coeff)){
 
 
 ```
+
+
+#comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
+```{r}
+# --- 1. BASE PARAMETERS ---
+N_j0 <- 50
+N_a0 <- 50
+N_j0M <- 0
+N_a0M <- 0
+R_a <- 2
+R_aM <- 2
+mu <- 0.01
+t_max <- 1000
+S_j <- 0.4
+S_a <- 0.6
+
+# Parameters to sweep
+selection_survival <- c(1.25, 1.5, 1.75)
+selection_reproduction <- c(2, 3, 6)
+
+# Simulation repetitions
+no_replicates <- 100
+
+
+# --- 4. PARAMETER SWEEP AND DATA COLLECTION ---
+data_table <- c()
+
+# loop over reproduction selection
+for (repro_val in selection_reproduction) {
+  
+  # loop over survival selection
+  for (surv_val in selection_survival) {
+    
+    # Calculate modified rates based on current loop values
+    current_R_aM <- R_a * repro_val
+    current_S_aM <- S_j * surv_val
+    current_S_jM <- S_a * surv_val
+    
+    # reset counter for replicates
+    i <- 1
+    
+    repeat {
+      # run the simulation once with the modified parameters
+      one_run <- simulate_pop(N_j0, N_a0, N_j0M, N_a0M, 
+                              R_a, current_R_aM, 
+                              S_j, current_S_jM, 
+                              S_a, current_S_aM, 
+                              mu, t_max)
+      
+      # determine total population sizes
+      total_size <- one_run[,1] + one_run[,2] + one_run[,3] + one_run[,4]
+      
+      # determine minimum population size
+      min_size <- min(total_size)
+      
+      # determine (first) generation at which this population size occurred
+      min_gen <- as.numeric(which(total_size == min_size)[1])
+      
+      # Check if population went extinct (1 = yes, 0 = no)
+      went_extinct <- ifelse(tail(total_size, 1) == 0, 1, 0)
+      
+      # enter the data into the table
+      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size, went_extinct))
+      
+      # stop the repeated computation after no_replicates times
+      if (i >= no_replicates) break
+      
+      # increase counter by one
+      i <- i + 1
+    }
+  }
+}
+
+# define column names of data table
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "extinct")
+
+# Convert to data frame
+data_table_analysis <- as.data.frame(data_table)
+
+# show the first lines of the output
+print((data_table_analysis))
+
+# --- 5. QUICK SUMMARY OF RESULTS ---
+# Since you want to compare survival / rescue speed, you can easily summarize the data:
+# Calculate probability of survival (1 - mean(extinct))
+# Calculate average time to lowest population (mean(min_gen))
+
+library(dplyr)
+summary_table <- data_table_analysis %>%
+  group_by(repro_multiplier, surv_multiplier) %>%
+  summarize(
+    probability_survival = 1 - mean(extinct),
+    avg_rescue_speed = mean(min_gen),
+    avg_min_population = mean(min_size)
+  )
+
+print(summary_table)
+
+```
+
