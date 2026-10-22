@@ -14,14 +14,14 @@ There was an error because some values were negative. That's why we put the max(
 # Simulate WT-Population without any mutations and stochasticity
 simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu){
   N_a0 <- max(N_a0, 0)
-  New_jtM <- rpois(1, N_a0 * mu * R_a)
+  New_jtM <- max(rpois(1, N_a0 * mu * R_a), 0)
   N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) #calculating number of WT juvenile individuals.
   
-  N_at <- rpois(1, S_j * N_j0 + S_a * N_a0) #calculating number of adult individuals
+  N_at <- max(rpois(1, S_j * N_j0 + S_a * N_a0), 0) #calculating number of adult individuals
   
   
-  N_jtM <- rpois(1, N_a0M * R_aM) + New_jtM # calculating number of Mutant juveniles
-  N_atM <- rpois(1, N_j0M * S_jM + S_aM * N_a0M) # calculating number of Mutant adults
+  N_jtM <- max(rpois(1, N_a0M * R_aM) + New_jtM, 0) # calculating number of Mutant juveniles
+  N_atM <- max (rpois(1, N_j0M * S_jM + S_aM * N_a0M), 0) # calculating number of Mutant adults
   
   return(c(N_jt, N_at, N_jtM, N_atM))
 }
@@ -252,21 +252,70 @@ colnames(plot_table) <- c("resque prob.","ac_s","s_coeff")
 
 
 #comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
+
+## first i want to do the matrix thing to keep the lambda the same: this i did with AI
 ```{r}
+# 1. Define resident matrix
+# define WT leslie matrix and get growth rate
+  l_matrix_WT <- matrix(c(
+    0, R_a,
+    S_j, S_a
+  ), nrow = 2, byrow = TRUE)
+  
+  all_eigen <- eigen(l_matrix_WT)
+  growth_rate_WT <- max(Re(all_eigen$values))
+  l_matrix_WT
+  growth_rate_WT
+
+# define Mut leslie matrix and getting growth rate
+  R_aM <- 1.5 * R_a
+  S_jM <- 1.2 * S_j
+  S_aM <- 1.2 * S_a
+  l_matrix_Mut <- matrix(c(
+    0, R_aM,
+    S_jM, S_aM
+  ), nrow = 2, byrow = TRUE)
+  
+  all_eigen <- eigen(l_matrix_Mut)
+  growth_rate_Mut <- max(Re(all_eigen$values))
+  l_matrix_Mut
+  growth_rate_Mut
+
+# 2. Function to compute required reproduction multiplier (reproduction_advantage) for a given survival multiplier (survival_advantage)
+  find_repro_multiplier <- function(survival_advantage, matrix, target_lambda) {
+    F1 <- matrix[1, 1]
+    F2 <- matrix[1, 2]
+    P1 <- matrix[2, 1]
+    P2 <- matrix[2, 2]
+    
+    num <- target_lambda^2 - survival_advantage * P2 * target_lambda
+    den <- F1 * target_lambda - survival_advantage * (F1 * P2 - F2 * P1)
+    
+    return(num / den)
+  }
+
+# Example: If survival increases by 20% (s = 1.2), what must r be?
+s_val <- 1.2
+r_val <- find_repro_multiplier(s_val, l_matrix_WT, 1.2)
+
+r_val
+
+```
+
+```{r}
+
 # --- 1. BASE PARAMETERS ---
-N_j0 <- 50
+N_j0 <-50
 N_a0 <- 50
 N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
+S_j <- 0.2
+S_a <- 0.5
 mu <- 0.01
 t_max <- 1000
-S_j <- 0.4
-S_a <- 0.6
 
-# Parameters to sweep
-selection_survival <- c(1.25, 1.5, 1.75)
-selection_reproduction <- c(1.1, 1.2, 1.3)
+
 
 # Simulation repetitions
 no_replicates <- 100
@@ -275,10 +324,10 @@ no_replicates <- 100
 data_table <- c()
 
 # loop over reproduction selection
-for (repro_val in selection_reproduction) {
+for (repro_val in seq(1,1.5,0.05)) {
   
   # loop over survival selection
-  for (surv_val in selection_survival) {
+  for (surv_val in seq(1, 1.2, 0.02)) {
     
     # Calculate modified rates based on current loop values
     current_R_aM <- R_a * repro_val
@@ -305,11 +354,8 @@ for (repro_val in selection_reproduction) {
       # determine (first) generation at which this population size occurred
       min_gen <- as.numeric(which(total_size == min_size)[1])
       
-      # Check if population went extinct (1 = yes, 0 = no)
-      went_extinct <- ifelse(tail(total_size, 1) == 0, 1, 0)
-      
       # enter the data into the table
-      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size, went_extinct))
+      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size))
       
       # stop the repeated computation after no_replicates times
       if (i >= no_replicates) break
@@ -319,6 +365,64 @@ for (repro_val in selection_reproduction) {
     }
   }
 }
+
+# define column names of data table
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size")
+
+# Convert to data frame
+data_table_analysis <- as.data.frame(data_table)
+# Add "rescued" column
+data_table_analysis$rescued <- data_table_analysis$min_size != 0
+
+
+
+summary_table <- c()
+for(x in unique(data_table_analysis$repro_multiplier)){
+  for(s in unique(data_table_analysis$surv_multiplier)){
+    data_table_filter <- data_table_analysis[data_table_analysis$repro_multiplier == x & data_table_analysis$surv_multiplier == s,]
+    summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s))
+  } 
+}
+
+colnames(summary_table) <- c("resque probability", "repro_multiplier", "surv_multiplier")
+
+
+
+```
+
+# do the plots for the analysis of changed R vs.changed S
+
+```{r}
+# 1. Convert summary_table to a clean data frame with numeric types
+heatmap_df <- as.data.frame(summary_table)
+colnames(heatmap_df) <- c("rescue_prob", "repro_multiplier", "surv_multiplier")
+heatmap_df$rescue_prob      <- as.numeric(heatmap_df$rescue_prob)
+heatmap_df$repro_multiplier <- as.numeric(heatmap_df$repro_multiplier)
+heatmap_df$surv_multiplier  <- as.numeric(heatmap_df$surv_multiplier)
+
+# 2. Generate the heatmap with ggplot2
+ggplot(heatmap_df, aes(x = factor(repro_multiplier), y = factor(surv_multiplier), fill = rescue_prob)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  scale_fill_viridis_c(
+    limits = c(0, 1), 
+    option = "plasma", 
+    name = "Rescue\nProbability"
+  ) +
+  labs(
+    title = "Evolutionary Rescue Probability",
+    x = "Reproduction Multiplier",
+    y = "Survival Multiplier"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    panel.grid = element_blank()
+  ) +
+  coord_fixed()
+```
+
+
+```{r}
 
 # define column names of data table
 colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "extinct")
@@ -342,4 +446,6 @@ summary_table <- data_table_analysis %>%
 print(summary_table)
 
 ```
+
+
 
