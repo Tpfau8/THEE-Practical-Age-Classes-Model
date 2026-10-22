@@ -259,7 +259,6 @@ N_a0 <- 50
 N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
-R_aM <- 2
 mu <- 0.01
 t_max <- 1000
 S_j <- 0.4
@@ -267,13 +266,12 @@ S_a <- 0.6
 
 # Parameters to sweep
 selection_survival <- c(1.25, 1.5, 1.75)
-selection_reproduction <- c(2, 3, 6)
+selection_reproduction <- c(1.1, 1.2, 1.3)
 
 # Simulation repetitions
 no_replicates <- 100
 
-
-# --- 4. PARAMETER SWEEP AND DATA COLLECTION ---
+#data table initializing
 data_table <- c()
 
 # loop over reproduction selection
@@ -331,10 +329,6 @@ data_table_analysis <- as.data.frame(data_table)
 # show the first lines of the output
 print((data_table_analysis))
 
-# --- 5. QUICK SUMMARY OF RESULTS ---
-# Since you want to compare survival / rescue speed, you can easily summarize the data:
-# Calculate probability of survival (1 - mean(extinct))
-# Calculate average time to lowest population (mean(min_gen))
 
 library(dplyr)
 summary_table <- data_table_analysis %>%
