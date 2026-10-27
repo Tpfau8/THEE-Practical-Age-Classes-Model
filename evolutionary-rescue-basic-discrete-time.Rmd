@@ -131,14 +131,18 @@ We have to figure out which ranges of survival rates make sense. So the growth r
 
 ```{r}
 # set some parameters to fixed values
-N_j0 <- 50
+
+N_j0 <-50
 N_a0 <- 50
 N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
 R_aM <- 2
+S_j <- 0.2
+S_a <- 0.5
 mu <- 0.01
 t_max <- 1000
+
 
 
 # determine how often to run the simulation for each set of parameters
@@ -149,7 +153,7 @@ data_table <- c()
 
 # Doing a parameter sweep
 for (selection_on_jM in c(TRUE,FALSE)){
-  for (s_coeff in seq(1, 2, 0.01)){
+  for (s_coeff in seq(1, 2, 0.05)){
     S_j <- 0.2
     S_jM <- S_j * ifelse(selection_on_jM, s_coeff, 1)
     S_a <- 0.5
@@ -191,7 +195,6 @@ df$rescued <- df$no_min != 0
 
 #try if the basic principle of getting the rescue-probability works
 df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juv",]
-print(mean(df_filter$rescued))
 
 #creating a empty table to put the stuff to plot in
 plot_table <- c()
@@ -202,10 +205,33 @@ for(x in unique(df$ac_s)){
  } 
 }
 
-colnames(plot_table) <- c("resque prob.","ac_s","s_coeff")
+colnames(plot_table) <- c("rescue prob.","ac_s","s_coeff")
+
 
 
 ```
+
+
+## plotting the effect of varrying survival coefficients on adults vs juveniles on rescue probabilities
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+plot_table_survcompare <- as.data.frame(plot_table)
+plot_table_survcompare$s_coeff <- as.numeric(plot_table_survcompare$s_coeff)
+plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`rescue prob.`))
+
+
+
+ggplot(plot_table_survcompare, aes(x = s_coeff , y = `rescue prob.` , color = ac_s)) +
+  geom_point()+
+  labs(x = "selection coefficient", y = "rescue probabability", title = "Effect of Varying Selection coefficeints on the survival rates of
+adults vs juveniles on rescue probability", color = "Which age group")
+  
+
+```
+
 
 ## comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
 
@@ -236,7 +262,7 @@ for (repro_val in seq(1,1.5,0.05)) {
   # loop over survival selection
   for (surv_val in seq(1, 1.2, 0.02)) {
     
-    # Calculate modified rates based on current loop values
+    # Calculate modified rates based on current loop values 
     current_R_aM <- R_a * repro_val
     current_S_aM <- S_j * surv_val
     current_S_jM <- S_a * surv_val
@@ -262,7 +288,7 @@ for (repro_val in seq(1,1.5,0.05)) {
       min_gen <- as.numeric(which(total_size == min_size)[1])
       
       # enter the data into the table
-      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size))
+      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size, current_R_aM,current_S_aM))
       
       # stop the repeated computation after no_replicates times
       if (i >= no_replicates) break
@@ -274,30 +300,30 @@ for (repro_val in seq(1,1.5,0.05)) {
 }
 
 # define column names of data table
-colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size")
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "current R", "Current S")
 
 # Convert to data frame
-data_table_analysis <- as.data.frame(data_table)
+data_table_RvsS <- as.data.frame(data_table)
 # Add "rescued" column
-data_table_analysis$rescued <- data_table_analysis$min_size != 0
+data_table_RvsS$rescued <- data_table_RvsS$min_size != 0
 
 
 
 summary_table <- c()
-for(x in unique(data_table_analysis$repro_multiplier)){
-  for(s in unique(data_table_analysis$surv_multiplier)){
-    data_table_filter <- data_table_analysis[data_table_analysis$repro_multiplier == x & data_table_analysis$surv_multiplier == s,]
+for(x in unique(data_table_RvsS$repro_multiplier)){
+  for(s in unique(data_table_RvsS$surv_multiplier)){
+    data_table_filter <- data_table_RvsS[data_table_RvsS$repro_multiplier == x & data_table_RvsS$surv_multiplier == s,]
     summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s))
   } 
 }
 
-colnames(summary_table) <- c("resque probability", "repro_multiplier", "surv_multiplier")
+colnames(summary_table) <- c("rescue probability","Reproduction rate", "Survival rate")
 
 
 
 ```
 
-# do the plots for the analysis of changed R vs.changed S
+# do the plots for the analysis of changed R vs.changed S. Heat Map
 
 ```{r}
 # 1. Convert summary_table to a clean data frame with numeric types
@@ -317,8 +343,8 @@ ggplot(heatmap_df, aes(x = factor(repro_multiplier), y = factor(surv_multiplier)
   ) +
   labs(
     title = "Evolutionary Rescue Probability",
-    x = "Reproduction Multiplier",
-    y = "Survival Multiplier"
+    x = "Reproduction coefficient",
+    y = "Survival coefficient"
   ) +
   theme_minimal() +
   theme(
@@ -334,14 +360,14 @@ ggplot(heatmap_df, aes(x = factor(repro_multiplier), y = factor(surv_multiplier)
 colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "extinct")
 
 # Convert to data frame
-data_table_analysis <- as.data.frame(data_table)
+data_table_RvsS <- as.data.frame(data_table)
 
 # show the first lines of the output
-print((data_table_analysis))
+print((data_table_RvsS))
 
 
 library(dplyr)
-summary_table <- data_table_analysis %>%
+summary_table <- data_table_RvsS %>%
   group_by(repro_multiplier, surv_multiplier) %>%
   summarize(
     probability_survival = 1 - mean(extinct),
