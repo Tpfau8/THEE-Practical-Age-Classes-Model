@@ -7,15 +7,24 @@ output:
     df_print: paged
 ---
 
+### installing packages for plotting
+
+```{r}
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("ggplot2")
+```
+
 # Simulate one generation
-There was an error because some values were negative. That's why we put the max() at some places. 
+
+There was an error because some values were negative. That's why we put the max() at some places.
 
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
 simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu){
-  N_a0 <- max(N_a0, 0)
-  New_jtM <- max(rpois(1, N_a0 * mu * R_a), 0)
-  N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) #calculating number of WT juvenile individuals.
+  N_a0 <- max(N_a0, 0) #we use max to avoid negative 
+  New_jtM <- max(rpois(1, N_a0 * mu * R_a), 0) #New Juvenile mutants
+  N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) #calculating number of WT juvenile individual
   
   N_at <- max(rpois(1, S_j * N_j0 + S_a * N_a0), 0) #calculating number of adult individuals
   
@@ -25,7 +34,7 @@ simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a,
   
   return(c(N_jt, N_at, N_jtM, N_atM))
 }
-print(simulate_one_gen(100, 100,0, 0, 2, 2, 0.1,0.1, 0.6, 0.6, 0.02))
+
 ```
 
 ## Simulate a population trajectory
@@ -44,7 +53,7 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
     
     # add the new population sizes to the output vector
     pop_vector <- rbind(pop_vector,pop_new)
-    # condition to stop the simulation before t_max: either the population exceeds 1.5 times the original population size, or it goes extinct
+    # condition to stop the simulation before t_max: either the population exceeds 10 times the original population size, or it goes extinct
     if ( (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4] >=10*(N_j0+ N_a0 + N_j0M+ N_a0M)) | (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4]==0)) break }
   
   # add row and column names
@@ -53,52 +62,29 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
   
   return(pop_vector)
 }
-print(tail(simulate_pop(100, 100, 0,0, 2.5,2.5, 0.2,0.2, 0.6,0.6, 0.001, 1500)))
 
-
- 
-```
-
-# basic plot with base r
-
-```{r}
-output <- simulate_pop(100, 100, 0,0, 1.8,2.5, 0.2,0.2, 0.6,0.6, 0.009, 1500)
-print(tail(output))
-
-x_range <- 0:(length(output[,1])-1)
-# this plots the total population size
-plot(x_range,output[,1]+output[,2],type='l',ylim=c(0,max(output[,1]+output[,2])),xlab = "Generation",ylab = "Population size")
-# add number of Juvenile WT individuals
-lines(x_range,output[,1], col="blue")
-# add number of adult WT individuals
-lines(x_range,output[,2], col="red")
-#number of Juvenile Mutant individuals 
-lines(x_range,output[,3], col = "green")
-#number of adult mutant individuals
-lines(x_range,output[,4], col = "yellow")
-
-legend("right",
-       c("WT Juvenile indidviduals", "WT Adult individuals", "Juvenile Mutant individuals", "Adult mutant individuals"),
-       text.font = 3)
 ```
 
 # pro version of plots by tobias with ggplot()
 
 ```{r}
-install.packages("dplyr")
-install.packages("tidyr")
-install.packages("ggplot2")
-```
-
-```{r}
-
 
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 
+N_j0 <- 50
+N_a0 <- 50
+N_j0M <- 0
+N_a0M <- 0
+R_a <- 2
+R_aM <- 2
+mu <- 0.01
+t_max <- 1000
+
+
 # having the simulation set as a variable
-sim_data <- simulate_pop(100, 100, 0, 0, 2,2, 0.2, 0.2, 0.6, 0.8, 0.01, 1500)
+sim_data <- simulate_pop(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max)
 
 #Convert matrix to Dataframe to help analysis
 df <- as.data.frame(sim_data)
@@ -144,7 +130,6 @@ ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, line
 We have to figure out which ranges of survival rates make sense. So the growth rate of the wildtypes should be below 1 and for the mutants it should be more than 1 probably.
 
 ```{r}
-#N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max
 # set some parameters to fixed values
 N_j0 <- 50
 N_a0 <- 50
@@ -154,8 +139,6 @@ R_a <- 2
 R_aM <- 2
 mu <- 0.01
 t_max <- 1000
-
-
 
 
 # determine how often to run the simulation for each set of parameters
@@ -198,32 +181,6 @@ colnames(data_table) <- c("s_coeff","ac_s","min_gen","no_min")
 # show the first lines of the output
 
 
-
-
-
-#define WT leslie matrix and get growth-rate
-
-l_matrix_WT <- matrix(c(
-  0, R_a,
-  S_j, S_a
-), nrow = 2, byrow = TRUE)
-
-all_eigen <- eigen(l_matrix_WT)
-growth_rate_WT <- max(Re(all_eigen$values))
-l_matrix_WT
-growth_rate_WT
-
-# define WT leslie matrix and get growth-rate
-l_matrix_Mut <- matrix(c(
-  0, R_aM,
-  S_jM, S_aM
-), nrow = 2, byrow = TRUE)
-
-all_eigen <- eigen(l_matrix_Mut)
-growth_rate_Mut <- max(Re(all_eigen$values))
-l_matrix_Mut
-growth_rate_Mut
-
 #making the matrix a table and making some values numeric to be able to calculate with them
 df <- as.data.frame(data_table)
 df$s_coeff <- as.numeric(df$s_coeff)
@@ -232,7 +189,7 @@ df$no_min <- as.numeric(df$no_min)
 
 df$rescued <- df$no_min != 0
 
-#try if the basic principle of gettint the resque-probability works
+#try if the basic principle of getting the rescue-probability works
 df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juv",]
 print(mean(df_filter$rescued))
 
@@ -250,57 +207,7 @@ colnames(plot_table) <- c("resque prob.","ac_s","s_coeff")
 
 ```
 
-
-#comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
-
-## first i want to do the matrix thing to keep the lambda the same: this i did with AI
-```{r}
-# 1. Define resident matrix
-# define WT leslie matrix and get growth rate
-  l_matrix_WT <- matrix(c(
-    0, R_a,
-    S_j, S_a
-  ), nrow = 2, byrow = TRUE)
-  
-  all_eigen <- eigen(l_matrix_WT)
-  growth_rate_WT <- max(Re(all_eigen$values))
-  l_matrix_WT
-  growth_rate_WT
-
-# define Mut leslie matrix and getting growth rate
-  R_aM <- 1.5 * R_a
-  S_jM <- 1.2 * S_j
-  S_aM <- 1.2 * S_a
-  l_matrix_Mut <- matrix(c(
-    0, R_aM,
-    S_jM, S_aM
-  ), nrow = 2, byrow = TRUE)
-  
-  all_eigen <- eigen(l_matrix_Mut)
-  growth_rate_Mut <- max(Re(all_eigen$values))
-  l_matrix_Mut
-  growth_rate_Mut
-
-# 2. Function to compute required reproduction multiplier (reproduction_advantage) for a given survival multiplier (survival_advantage)
-  find_repro_multiplier <- function(survival_advantage, matrix, target_lambda) {
-    F1 <- matrix[1, 1]
-    F2 <- matrix[1, 2]
-    P1 <- matrix[2, 1]
-    P2 <- matrix[2, 2]
-    
-    num <- target_lambda^2 - survival_advantage * P2 * target_lambda
-    den <- F1 * target_lambda - survival_advantage * (F1 * P2 - F2 * P1)
-    
-    return(num / den)
-  }
-
-# Example: If survival increases by 20% (s = 1.2), what must r be?
-s_val <- 1.2
-r_val <- find_repro_multiplier(s_val, l_matrix_WT, 1.2)
-
-r_val
-
-```
+## comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
 
 ```{r}
 
@@ -421,7 +328,6 @@ ggplot(heatmap_df, aes(x = factor(repro_multiplier), y = factor(surv_multiplier)
   coord_fixed()
 ```
 
-
 ```{r}
 
 # define column names of data table
@@ -447,5 +353,45 @@ print(summary_table)
 
 ```
 
+## matrix thing to keep the lambda constant
 
+```{r}
+# 1. Define resident matrix
+# define WT leslie matrix and get growth rate
+  l_matrix_WT <- matrix(c(
+    0, R_a,
+    S_j, S_a
+  ), nrow = 2, byrow = TRUE)
+  
+  all_eigen <- eigen(l_matrix_WT)
+  growth_rate_WT <- max(Re(all_eigen$values))
+  l_matrix_WT
+  growth_rate_WT
 
+# define Mut leslie matrix and getting growth rate
+  R_aM <- 1.5 * R_a
+  S_jM <- 1.2 * S_j
+  S_aM <- 1.2 * S_a
+  l_matrix_Mut <- matrix(c(
+    0, R_aM,
+    S_jM, S_aM
+  ), nrow = 2, byrow = TRUE)
+  
+  all_eigen <- eigen(l_matrix_Mut)
+  growth_rate_Mut <- max(Re(all_eigen$values))
+  l_matrix_Mut
+  growth_rate_Mut
+
+# 2. Function to compute required reproduction multiplier (reproduction_advantage) for a given survival multiplier (survival_advantage)
+  find_repro_multiplier <- function(survival_advantage, matrix, target_lambda) {
+    F1 <- matrix[1, 1]
+    F2 <- matrix[1, 2]
+    P1 <- matrix[2, 1]
+    P2 <- matrix[2, 2]
+    
+    num <- target_lambda^2 - survival_advantage * P2 * target_lambda
+    den <- F1 * target_lambda - survival_advantage * (F1 * P2 - F2 * P1)
+    
+    return(num / den)
+  }
+```
