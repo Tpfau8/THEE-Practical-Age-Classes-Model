@@ -63,6 +63,7 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
   return(pop_vector)
 }
 
+
 ```
 
 # pro version of plots by tobias with ggplot()
@@ -420,4 +421,193 @@ print(summary_table)
     
     return(num / den)
   }
+```
+
+## Testing the equation for the probability of evolutionary rescue through a new mutation
+
+The Equation: $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$
+
+The parameters
+
+- $P_{new}$ : Probability of Evolutionary Rescue
+
+- $N_0$: Initial population size
+
+- $u$: mutation rate
+
+- $s$: selection coefficient (advantage of mutant relative to WT)
+
+- $r$: initial growth rate
+
+### How the parameters translate to our model 
+
+- Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
+
+- initial growth rate ($r$): The lambda of the WT-Leslie Matrix
+
+- The other parameters are unchanged in our model and we keep them as they are.
+
+### How to test the equation
+
+The same lambda can be achieved with different matrices. So in our case with different values for the Reproduction- and Survival rates. To really know if the rescue probability of the population in our model can be explained only by the lambda + the other parameters on the right side of the equation we would need to test for different combinations of Reproduction- / Survival-rates. For that we could use the code used above to quantify the importance of a higher reproduction in the mutants vs. a higher survival.
+
+### Actual coding
+
+#### Creating "summary_table"
+
+The initial code gives a table called "summary_table", which contains:
+
+- **Rescue Probability**
+
+- **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
+
+- **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
+
+#### Getting the corresponding selection coefficient + initial growth rate
+
+For the equation i need to calculate the selection coefficient + the initial growth rate of the population. These can be derived from the parameters "$R_a$", "$S_j$",, "$S_a$", "repro_val" and "surv_val".
+
+#### Calculating the "$P_{new}$" with the equation:  $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$ for each row in summary_table
+
+```{r}
+
+# --- 1. BASE PARAMETERS ---
+N_j0 <-50
+N_a0 <- 50
+N_j0M <- 0
+N_a0M <- 0
+R_a <- 2
+S_j <- 0.2
+S_a <- 0.5
+mu <- 0.01
+t_max <- 1000
+
+
+
+# Simulation repetitions
+no_replicates <- 100
+
+#data table initializing
+data_table <- c()
+
+# loop over reproduction selection
+for (repro_val in seq(1,1.5,0.05)) {
+  
+  # loop over survival selection
+  for (surv_val in seq(1, 1.2, 0.02)) {
+    
+    # Calculate modified rates based on current loop values
+    current_R_aM <- R_a * repro_val
+    current_S_aM <- S_j * surv_val
+    current_S_jM <- S_a * surv_val
+    
+    # reset counter for replicates
+    i <- 1
+    
+    repeat {
+      # run the simulation once with the modified parameters
+      one_run <- simulate_pop(N_j0, N_a0, N_j0M, N_a0M, 
+                              R_a, current_R_aM, 
+                              S_j, current_S_jM, 
+                              S_a, current_S_aM, 
+                              mu, t_max)
+      
+      # determine total population sizes
+      total_size <- one_run[,1] + one_run[,2] + one_run[,3] + one_run[,4]
+      
+      # determine minimum population size
+      min_size <- min(total_size)
+      
+      # determine (first) generation at which this population size occurred
+      min_gen <- as.numeric(which(total_size == min_size)[1])
+      
+      # enter the data into the table
+      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size))
+      
+      # stop the repeated computation after no_replicates times
+      if (i >= no_replicates) break
+      
+      # increase counter by one
+      i <- i + 1
+    }
+  }
+}
+
+# define column names of data table
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size")
+
+# Convert to data frame
+data_table_analysis <- as.data.frame(data_table)
+# Add "rescued" column
+data_table_analysis$rescued <- data_table_analysis$min_size != 0
+
+
+
+summary_table <- c()
+for(x in unique(data_table_analysis$repro_multiplier)){
+  for(s in unique(data_table_analysis$surv_multiplier)){
+    data_table_filter <- data_table_analysis[data_table_analysis$repro_multiplier == x & data_table_analysis$surv_multiplier == s,]
+    summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s))
+  } 
+}
+
+colnames(summary_table) <- c("resque probability", "repro_multiplier", "surv_multiplier")
+summary_table <- as.data.frame(summary_table)
+# the initial r-value is the same for all
+  # define WT leslie matrix, get growth rate and define it as "r"
+  l_matrix_WT <- matrix(c(
+    0, R_a,
+    S_j, S_a
+  ), nrow = 2, byrow = TRUE)
+  
+  all_eigen <- eigen(l_matrix_WT)
+  growth_rate_WT <- max(Re(all_eigen$values))
+  l_matrix_WT
+  r <- growth_rate_WT
+
+# here i want to add the corresponding s-values to the summary_table
+  # Calculate difference in days, then convert to approximate years
+  # make function to generally get the selection_coefficient
+    # first create a new column for the summary_table
+    summary_table$selection_coefficient <- 0
+    
+    get_s <- function(R_a, S_j, S_a, summary_table, r){
+      selection_coefficients <- c()
+      for (i in 1:nrow(summary_table)) {
+        #make the current matrix and calculate the current_mut_r
+        R_aM <- R_a * summary_table[i, "repro_multiplier"]
+        S_jM <- S_j * summary_table[i, "surv_multiplier"]
+        S_aM <- S_a * summary_table[i, "surv_multiplier"]
+        current_l_matrix_Mut <- matrix(c(
+          0, R_aM,
+          S_jM, S_aM
+        ), nrow = 2, byrow = TRUE)
+        
+        all_eigen <- eigen(current_l_matrix_Mut)
+        current_mut_r <- max(Re(all_eigen$values))
+        
+        current_selection_coefficient <- current_mut_r - r
+        
+        summary_table[i, "selection_coefficient"] <- current_selection_coefficient
+        return(summary_table)
+      }
+    }
+    
+    get_s(R_a, S_j, S_a, summary_table, r)
+    
+# now i wan't to calculate the P_new and add it to the summary_table
+    summary_table$rescue_probability_equation <- 0
+    N_0 <- N_a0 + N_a0M + N_j0 + N_j0M
+    add_p_new <- function(N_0, mu, r, summary_table){
+      for (i in 1:nrow(summary_table)){
+        s <- summary_table[i, "selection_coefficient"]
+        P_new <- 1 - exp(-(2*N_0*mu*(s-r))/(r))
+        summary_table[i, "rescue_probability_equation"] <- P_new
+      }
+     return(summary_table)
+    }
+    
+  add_p_new(N_0, mu, r, summary_table)
+  
+  
 ```
