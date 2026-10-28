@@ -13,6 +13,7 @@ output:
 install.packages("dplyr")
 install.packages("tidyr")
 install.packages("ggplot2")
+install.packages("gghighlight")
 ```
 
 # Simulate one generation
@@ -147,7 +148,7 @@ t_max <- 1000
 
 
 # determine how often to run the simulation for each set of parameters
-no_replicates <- 100
+no_replicates <- 1000
 
 # initialize data table - where to collect the results
 data_table_survcompare <- c()
@@ -176,7 +177,7 @@ for (selection_on_jM in c(TRUE,FALSE)){
       #adding absollute survival
       S_abs <- ifelse(selection_on_jM, S_jM, S_aM)
       # enter the data into the table
-      data_table_survcompare <- rbind(data_table_survcompare,c(s_coeff,S_abs,ifelse(selection_on_jM, "on_juv", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
+      data_table_survcompare <- rbind(data_table_survcompare,c(s_coeff,S_abs,ifelse(selection_on_jM, "on_juveniles", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
       # stop the repeated computation after no_replicates times
       if(i>no_replicates) break
     }
@@ -197,7 +198,7 @@ df$no_min <- as.numeric(df$no_min)
 df$rescued <- df$no_min != 0
 
 #try if the basic principle of getting the rescue-probability works
-df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juv",]
+df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juveniles",]
 
 #creating a empty table to put the stuff to plot in
 plot_table <- c()
@@ -208,7 +209,7 @@ for(x in unique(df$ac_s)){
  } 
 }
 
-colnames(plot_table) <- c("rescue prob.","ac_s","s_coeff")
+colnames(plot_table) <- c("rescue prob.","ac_s","S_absolute")
 
 
 
@@ -218,17 +219,19 @@ colnames(plot_table) <- c("rescue prob.","ac_s","s_coeff")
 
 ```{r}
 library(ggplot2)
+library(gghighlight)
 library(dplyr)
 library(tidyr)
 plot_table_survcompare <- as.data.frame(plot_table)
-plot_table_survcompare$s_coeff <- as.numeric(plot_table_survcompare$s_coeff)
+plot_table_survcompare$S_absolute <- as.numeric(plot_table_survcompare$S_absolute)
 plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`rescue prob.`))
 
 
 
-ggplot(plot_table_survcompare, aes(x = s_coeff , y = `rescue prob.` , color = ac_s)) +
+ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.` , color = ac_s)) +
   geom_point()+
   labs(x = "survival rate", y = "rescue probabability", title = "", color = "Which age group")
+  
   
 
 ```
@@ -284,8 +287,11 @@ for (repro_val in seq(1,1.5,0.05)) {
       # determine minimum population size
       min_size <- min(total_size)
       
+  
       # determine (first) generation at which this population size occurred
       min_gen <- as.numeric(which(total_size == min_size)[1])
+      
+      
       
       # enter the data into the table
       data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size, current_R_aM,current_S_aM))
@@ -300,7 +306,7 @@ for (repro_val in seq(1,1.5,0.05)) {
 }
 
 # define column names of data table
-colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "current R", "Current S")
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S")
 
 # Convert to data frame
 data_table_RvsS <- as.data.frame(data_table)
@@ -310,14 +316,14 @@ data_table_RvsS$rescued <- data_table_RvsS$min_size != 0
 
 
 summary_table <- c()
-for(x in unique(data_table_RvsS$repro_multiplier)){
-  for(s in unique(data_table_RvsS$surv_multiplier)){
-    data_table_filter <- data_table_RvsS[data_table_RvsS$repro_multiplier == x & data_table_RvsS$surv_multiplier == s,]
+for(x in unique(data_table_RvsS$Current_R)){
+  for(s in unique(data_table_RvsS$Current_S)){
+    data_table_filter <- data_table_RvsS[data_table_RvsS$Current_R == x & data_table_RvsS$Current_S == s,]
     summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s))
   } 
 }
 
-colnames(summary_table) <- c("rescue probability","Reproduction rate", "Survival rate")
+colnames(summary_table) <- c("rescue probability","Reproduction rate", "Current_S")
 
 
 
@@ -326,15 +332,17 @@ colnames(summary_table) <- c("rescue probability","Reproduction rate", "Survival
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
 ```{r}
+library(ggplot2)
+
 # 1. Convert summary_table to a clean data frame with numeric types
 heatmap_df <- as.data.frame(summary_table)
-colnames(heatmap_df) <- c("rescue_prob", "repro_multiplier", "surv_multiplier")
+colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S")
 heatmap_df$rescue_prob      <- as.numeric(heatmap_df$rescue_prob)
-heatmap_df$repro_multiplier <- as.numeric(heatmap_df$repro_multiplier)
-heatmap_df$surv_multiplier  <- as.numeric(heatmap_df$surv_multiplier)
+heatmap_df$Current_R <- as.numeric(heatmap_df$Current_R)
+heatmap_df$Current_S  <- as.numeric(heatmap_df$Current_S)
 
 # 2. Generate the heatmap with ggplot2
-ggplot(heatmap_df, aes(x = factor(repro_multiplier), y = factor(surv_multiplier), fill = rescue_prob)) +
+ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S), fill = rescue_prob)) +
   geom_tile(color = "white", linewidth = 0.4) +
   scale_fill_viridis_c(
     limits = c(0, 1), 
@@ -343,8 +351,8 @@ ggplot(heatmap_df, aes(x = factor(repro_multiplier), y = factor(surv_multiplier)
   ) +
   labs(
     title = "Evolutionary Rescue Probability",
-    x = "Reproduction coefficient",
-    y = "Survival coefficient"
+    x = "Reproduction Rates",
+    y = "Survival Rates"
   ) +
   theme_minimal() +
   theme(
