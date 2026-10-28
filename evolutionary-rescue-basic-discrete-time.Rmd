@@ -150,7 +150,7 @@ t_max <- 1000
 no_replicates <- 100
 
 # initialize data table - where to collect the results
-data_table <- c()
+data_table_survcompare <- c()
 
 # Doing a parameter sweep
 for (selection_on_jM in c(TRUE,FALSE)){
@@ -159,7 +159,7 @@ for (selection_on_jM in c(TRUE,FALSE)){
     S_jM <- S_j * ifelse(selection_on_jM, s_coeff, 1)
     S_a <- 0.5
     S_aM <- S_a * ifelse(selection_on_jM, 1, s_coeff)
-    
+  
    
     i<-1
     repeat {
@@ -173,8 +173,10 @@ for (selection_on_jM in c(TRUE,FALSE)){
       min_size <- min(total_size)
       # determine (first) generation at which this population size occurred
       min_gen <- as.numeric(which(total_size==min_size)[1])
+      #adding absollute survival
+      S_abs <- ifelse(selection_on_jM, S_jM, S_aM)
       # enter the data into the table
-      data_table <- rbind(data_table,c(s_coeff,ifelse(selection_on_jM, "on_juv", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
+      data_table_survcompare <- rbind(data_table_survcompare,c(s_coeff,S_abs,ifelse(selection_on_jM, "on_juv", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
       # stop the repeated computation after no_replicates times
       if(i>no_replicates) break
     }
@@ -182,13 +184,13 @@ for (selection_on_jM in c(TRUE,FALSE)){
 }
  
 # define column names of data table
-colnames(data_table) <- c("s_coeff","ac_s","min_gen","no_min")
+colnames(data_table_survcompare) <- c("S_coeff","S_absolute","ac_s","min_gen","no_min")
 # show the first lines of the output
 
 
 #making the matrix a table and making some values numeric to be able to calculate with them
-df <- as.data.frame(data_table)
-df$s_coeff <- as.numeric(df$s_coeff)
+df <- as.data.frame(data_table_survcompare)
+df$S_abs <- as.numeric(df$S_abs)
 df$min_gen <- as.numeric(df$min_gen)
 df$no_min <- as.numeric(df$no_min)
 
@@ -200,8 +202,8 @@ df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juv",]
 #creating a empty table to put the stuff to plot in
 plot_table <- c()
 for(x in unique(df$ac_s)){
- for(s in unique(df$s_coeff)){
-  df_filter <- df[df$s_coeff == s & df$ac_s == x,]
+ for(s in unique(df$S_abs)){
+  df_filter <- df[df$S_abs == s & df$ac_s == x,]
   plot_table <- rbind(plot_table, c(mean(df_filter$rescued), x, s))
  } 
 }
@@ -227,8 +229,7 @@ plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`res
 
 ggplot(plot_table_survcompare, aes(x = s_coeff , y = `rescue prob.` , color = ac_s)) +
   geom_point()+
-  labs(x = "selection coefficient", y = "rescue probabability", title = "Effect of Varying Selection coefficeints on the survival rates of
-adults vs juveniles on rescue probability", color = "Which age group")
+  labs(x = "survival rate", y = "rescue probabability", title = "", color = "Which age group")
   
 
 ```
