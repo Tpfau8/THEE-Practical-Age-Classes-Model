@@ -450,7 +450,7 @@ The parameters
 
 - Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
 
-- initial growth rate ($r$): The lambda of the WT-Leslie Matrix
+- decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
 
 - The other parameters are unchanged in our model and we keep them as they are.
 
@@ -486,8 +486,8 @@ N_a0 <- 50
 N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
-S_j <- 0.2
-S_a <- 0.5
+S_j <- 0.17
+S_a <- 0.3
 mu <- 0.01
 t_max <- 1000
 
@@ -503,7 +503,7 @@ data_table <- c()
 for (repro_val in seq(1,1.5,0.05)) {
   
   # loop over survival selection
-  for (surv_val in seq(1, 1.2, 0.02)) {
+  for (surv_val in seq(1, 2, 0.1)) {
     
     # Calculate modified rates based on current loop values
     current_R_aM <- R_a * repro_val
@@ -563,7 +563,7 @@ for(x in unique(data_table_analysis$repro_multiplier)){
 colnames(summary_table) <- c("resque probability", "repro_multiplier", "surv_multiplier")
 summary_table <- as.data.frame(summary_table)
 # the initial r-value is the same for all
-  # define WT leslie matrix, get growth rate and define it as "r"
+  # define WT leslie matrix, get growth rate and define "r"
   l_matrix_WT <- matrix(c(
     0, R_a,
     S_j, S_a
@@ -622,5 +622,30 @@ summary_table <- as.data.frame(summary_table)
     
   summary_table <- add_p_new(N_0, mu, r, summary_table)
   
+  # 1. Calculate mutant lambda (growth_rate_WT + s)
+  summary_table$lambda_mutant <- growth_rate_WT + summary_table$selection_coefficient
   
+  # 2. Filter out negative estimated rescue probabilities and reshape for plotting
+  plot_data <- summary_table %>%
+    filter(rescue_probability_equation >= 0) %>%
+    rename(Simulated = `resque probability`, Formula = rescue_probability_equation) %>%
+    pivot_longer(
+      cols = c(Simulated, Formula),
+      names_to = "Source",
+      values_to = "Rescue_Probability"
+    )
+  
+  # 3. Create the plot
+  ggplot(plot_data, aes(x = lambda_mutant, y = Rescue_Probability, color = Source)) +
+    geom_point(alpha = 0.7, size = 2) +
+    geom_smooth(se = FALSE, method = "loess", span = 0.8) +
+    theme_minimal() +
+    labs(
+      title = "Evolutionary Rescue Probability vs. Mutant Growth Rate",
+      x = expression(paste("Mutant Growth Rate (", lambda[mut], ")")),
+      y = "Rescue Probability",
+      color = "Type"
+    ) +
+    scale_color_manual(values = c("Simulated" = "steelblue", "Formula" = "darkorange")) +
+    ylim(0, 1)
 ```
