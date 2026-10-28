@@ -212,7 +212,6 @@ colnames(plot_table) <- c("rescue prob.","ac_s","s_coeff")
 
 ```
 
-
 ## plotting the effect of varrying survival coefficients on adults vs juveniles on rescue probabilities
 
 ```{r}
@@ -232,7 +231,6 @@ adults vs juveniles on rescue probability", color = "Which age group")
   
 
 ```
-
 
 ## comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
 
@@ -437,9 +435,9 @@ The parameters
 
 - $s$: selection coefficient (advantage of mutant relative to WT)
 
-- $r$: initial growth rate
+- $r$: decay rate (1-initial growth rate)
 
-### How the parameters translate to our model 
+### How the parameters translate to our model
 
 - Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
 
@@ -467,7 +465,9 @@ The initial code gives a table called "summary_table", which contains:
 
 For the equation i need to calculate the selection coefficient + the initial growth rate of the population. These can be derived from the parameters "$R_a$", "$S_j$",, "$S_a$", "repro_val" and "surv_val".
 
-#### Calculating the "$P_{new}$" with the equation:  $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$ for each row in summary_table
+#### Calculating the "$P_{new}$" with the equation: $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$ for each row in summary_table
+
+#### Deleting all rows where s is not \> than r
 
 ```{r}
 
@@ -563,7 +563,8 @@ summary_table <- as.data.frame(summary_table)
   all_eigen <- eigen(l_matrix_WT)
   growth_rate_WT <- max(Re(all_eigen$values))
   l_matrix_WT
-  r <- growth_rate_WT
+  r <-  1 - growth_rate_WT
+  r
 
 # here i want to add the corresponding s-values to the summary_table
   # Calculate difference in days, then convert to approximate years
@@ -571,7 +572,7 @@ summary_table <- as.data.frame(summary_table)
     # first create a new column for the summary_table
     summary_table$selection_coefficient <- 0
     
-    get_s <- function(R_a, S_j, S_a, summary_table, r){
+    get_s <- function(R_a, S_j, S_a, summary_table, r, growth_rate_WT){
       selection_coefficients <- c()
       for (i in 1:nrow(summary_table)) {
         #make the current matrix and calculate the current_mut_r
@@ -586,14 +587,17 @@ summary_table <- as.data.frame(summary_table)
         all_eigen <- eigen(current_l_matrix_Mut)
         current_mut_r <- max(Re(all_eigen$values))
         
-        current_selection_coefficient <- current_mut_r - r
+        current_selection_coefficient <- current_mut_r - growth_rate_WT
         
         summary_table[i, "selection_coefficient"] <- current_selection_coefficient
-        return(summary_table)
+        print(current_selection_coefficient)
+        
       }
+      return(summary_table)
     }
+    get_s(R_a, S_j, S_a, summary_table, r, growth_rate_WT)
     
-    get_s(R_a, S_j, S_a, summary_table, r)
+    summary_table <- get_s(R_a, S_j, S_a, summary_table, r, growth_rate_WT)
     
 # now i wan't to calculate the P_new and add it to the summary_table
     summary_table$rescue_probability_equation <- 0
@@ -607,7 +611,7 @@ summary_table <- as.data.frame(summary_table)
      return(summary_table)
     }
     
-  add_p_new(N_0, mu, r, summary_table)
+  summary_table <- add_p_new(N_0, mu, r, summary_table)
   
   
 ```
