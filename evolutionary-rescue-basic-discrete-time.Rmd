@@ -252,7 +252,7 @@ t_max <- 1000
 
 
 # Simulation repetitions
-no_replicates <- 100
+no_replicates <- 1000
 
 #data table initializing
 data_table <- c()
@@ -322,6 +322,8 @@ for(x in unique(data_table_RvsS$Current_R)){
 
 colnames(summary_table) <- c("rescue probability","Reproduction rate", "Current_S_Adults", "Current_S_juveniles")
 
+write.csv(summary_table, "documents/github/THEE Practical Age Classes )
+
 ```
 
 #### add the mutant lambda
@@ -350,13 +352,14 @@ library(ggplot2)
 
 # 1. Convert summary_table to a clean data frame with numeric types
 heatmap_df <- as.data.frame(summary_table)
-colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S")
+colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S_Adults", "Current_S_juveniles")
 heatmap_df$rescue_prob      <- as.numeric(heatmap_df$rescue_prob)
 heatmap_df$Current_R <- as.numeric(heatmap_df$Current_R)
-heatmap_df$Current_S  <- as.numeric(heatmap_df$Current_S)
+heatmap_df$Current_S_juveniles  <- as.numeric(heatmap_df$Current_S_juveniles)
+heatmap_df$Current_S_Adults  <- as.numeric(heatmap_df$Current_S_Adults)
 
 # 2. Generate the heatmap with ggplot2
-ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S), fill = rescue_prob)) +
+ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S_Adults), fill = rescue_prob)) +
   geom_tile(color = "white", linewidth = 0.4) +
   scale_fill_viridis_c(
     limits = c(0, 1), 
@@ -366,14 +369,34 @@ ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S), fill = resc
   labs(
     title = "Evolutionary Rescue Probability",
     x = "Reproduction Rates",
-    y = "Survival Rates"
+    y = "Survival Rates Adults"
   ) +
-  theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
     panel.grid = element_blank()
   ) +
   coord_fixed()
+
+  
+  ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S_juveniles), fill = rescue_prob)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  scale_fill_viridis_c(
+    limits = c(0, 1), 
+    option = "plasma", 
+    name = "Rescue\nProbability"
+  ) +
+  labs(
+    title = "Evolutionary Rescue Probability",
+    x = "Reproduction Rates",
+    y = "Survival Rates Juveiles"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    panel.grid = element_blank()
+  ) +
+  coord_fixed()
+
+
 ```
 
 ```{r}
