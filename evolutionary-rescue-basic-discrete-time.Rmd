@@ -35,9 +35,6 @@ simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a,
   
   return(c(N_jt, N_at, N_jtM, N_atM))
 }
-
-test <- simulate_one_gen(100,100,0,0,0.9,1.5,1,1,0,0,0.01)
-test
 ```
 
 ## Simulate a population trajectory
@@ -66,8 +63,6 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
   return(pop_vector)
 }
 
-test_2 <- simulate_pop(100,100,0,0,0.9,1.5,1,1,0,0,0.01,1000)
-test_2
 ```
 
 # pro version of plots by tobias with ggplot()
@@ -270,8 +265,8 @@ for (repro_val in seq(1,1.5,0.05)) {
     
     # Calculate modified rates based on current loop values 
     current_R_aM <- R_a * repro_val
-    current_S_aM <- S_j * surv_val
-    current_S_jM <- S_a * surv_val
+    current_S_aM <- S_a * surv_val
+    current_S_jM <- S_j * surv_val
     
     # reset counter for replicates
     i <- 1
@@ -297,7 +292,7 @@ for (repro_val in seq(1,1.5,0.05)) {
       
       
       # enter the data into the table
-      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size, current_R_aM,current_S_aM))
+      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size, current_R_aM,current_S_aM,current_S_jM))
       
       # stop the repeated computation after no_replicates times
       if (i >= no_replicates) break
@@ -309,7 +304,7 @@ for (repro_val in seq(1,1.5,0.05)) {
 }
 
 # define column names of data table
-colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S")
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S_Adults","Current_S_juveniles" )
 
 # Convert to data frame
 data_table_RvsS <- as.data.frame(data_table)
@@ -317,18 +312,15 @@ data_table_RvsS <- as.data.frame(data_table)
 data_table_RvsS$rescued <- data_table_RvsS$min_size != 0
 
 
-
 summary_table <- c()
 for(x in unique(data_table_RvsS$Current_R)){
-  for(s in unique(data_table_RvsS$Current_S)){
-    data_table_filter <- data_table_RvsS[data_table_RvsS$Current_R == x & data_table_RvsS$Current_S == s,]
-    summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s))
+  for(s in unique(data_table_RvsS$Current_S_Adults)){
+    data_table_filter <- data_table_RvsS[data_table_RvsS$Current_R == x & data_table_RvsS$Current_S_Adults == s,]
+    summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s,data_table_filter$Current_S_juveniles[1]))
   } 
 }
 
-colnames(summary_table) <- c("rescue probability","Reproduction rate", "Current_S")
-
-
+colnames(summary_table) <- c("rescue probability","Reproduction rate", "Current_S_Adults", "Current_S_juveniles")
 
 ```
 
