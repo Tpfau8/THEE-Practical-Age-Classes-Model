@@ -604,7 +604,6 @@ summary_table <- as.data.frame(summary_table)
       }
       return(summary_table)
     }
-    get_s(R_a, S_j, S_a, summary_table, r, growth_rate_WT)
     
     summary_table <- get_s(R_a, S_j, S_a, summary_table, r, growth_rate_WT)
     
