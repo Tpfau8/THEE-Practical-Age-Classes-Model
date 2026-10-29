@@ -430,55 +430,74 @@ ggplot(heatmap_df, aes(x = Current_R, y = Current_S_Adults)) +
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
 ```{r}
+# do the plots for the analysis of changed R vs.changed S. Heat Map
 library(ggplot2)
 
-# 1. Convert summary_table to a clean data frame with numeric types
+# 1. Format the data frame 
+# (Assuming your table now has these 5 columns based on your partner's updates)
 heatmap_df <- as.data.frame(summary_table)
-colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S_Adults", "Current_S_juveniles")
-heatmap_df$rescue_prob      <- as.numeric(heatmap_df$rescue_prob)
-heatmap_df$Current_R <- as.numeric(heatmap_df$Current_R)
-heatmap_df$Current_S_juveniles  <- as.numeric(heatmap_df$Current_S_juveniles)
-heatmap_df$Current_S_Adults  <- as.numeric(heatmap_df$Current_S_Adults)
+colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S_Adults", "Current_S_Juveniles", "lambda")
 
-# 2. Generate the heatmap with ggplot2
-ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S_Adults), fill = rescue_prob)) +
-  geom_tile(color = "white", linewidth = 0.4) +
+# Ensure all columns are numeric so the plot axes are continuous, not categorical
+heatmap_df[] <- lapply(heatmap_df, as.numeric)
+
+# 2. Define the exact mathematical function for the isocline
+# This solves the Leslie matrix characteristic equation for Adult Survival (y) based on Reproduction (x)
+exact_isocline <- function(x, target_lambda, wt_S_j, wt_S_a) {
+  (target_lambda^2) / (target_lambda + x * (wt_S_j / wt_S_a))
+}
+
+# 3. Build the heatmap with exact isoclines
+ggplot(heatmap_df, aes(x = Current_R, y = Current_S_Adults)) +
+  # Heatmap tiles
+  geom_tile(aes(fill = rescue_prob), color = "white", linewidth = 0.4) +
+  
+  # Exact isocline for lambda = 1.0 (The critical deterministic survival threshold)
+  stat_function(
+    fun = exact_isocline, 
+    args = list(target_lambda = 1.0, wt_S_j = S_j, wt_S_a = S_a), 
+    color = "cyan", linewidth = 1.2
+  ) +
+  
+  # Exact isocline for lambda = 1.05
+  stat_function(
+    fun = exact_isocline, 
+    args = list(target_lambda = 1.05, wt_S_j = S_j, wt_S_a = S_a), 
+    color = "black", linetype = "dashed", linewidth = 0.8
+  ) +
+  
+  # Exact isocline for lambda = 1.10
+  stat_function(
+    fun = exact_isocline, 
+    args = list(target_lambda = 1.10, wt_S_j = S_j, wt_S_a = S_a), 
+    color = "black", linetype = "dashed", linewidth = 0.8
+  ) +
+
+  # Option B: Add secondary Y-axis for Juvenile Survival Rate
+  scale_y_continuous(
+    sec.axis = sec_axis(~ . * (S_j / S_a), name = "Survival Rates Juveniles")
+  ) +
+  
   scale_fill_viridis_c(
     limits = c(0, 1), 
     option = "plasma", 
     name = "Rescue\nProbability"
   ) +
+  
+  # Lock the plot boundaries to the edges of your simulated heatmap data
+  coord_cartesian(
+    xlim = range(heatmap_df$Current_R), 
+    ylim = range(heatmap_df$Current_S_Adults)
+  ) +
+  
   labs(
     title = "Evolutionary Rescue Probability",
+    subtitle = "Cyan line: exact \u03BB = 1.0 | Dashed lines: \u03BB = 1.05, 1.10",
     x = "Reproduction Rates",
     y = "Survival Rates Adults"
   ) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    panel.grid = element_blank()
-  ) +
-  coord_fixed()
-
-  
-  ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S_juveniles), fill = rescue_prob)) +
-  geom_tile(color = "white", linewidth = 0.4) +
-  scale_fill_viridis_c(
-    limits = c(0, 1), 
-    option = "plasma", 
-    name = "Rescue\nProbability"
-  ) +
-  labs(
-    title = "Evolutionary Rescue Probability",
-    x = "Reproduction Rates",
-    y = "Survival Rates Juveiles"
-  ) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    panel.grid = element_blank()
-  ) +
-  coord_fixed()
-
-
+  theme_minimal() +
+  theme(panel.grid = element_blank())
 ```
 
 ```{r}
