@@ -23,6 +23,7 @@ There was an error because some values were negative. That's why we put the max(
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
 simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu){
+  set.seed(seed)
   N_a0 <- max(N_a0, 0) #we use max to avoid negative 
   New_jtM <- max(rpois(1, N_a0 * mu * R_a), 0) #New Juvenile mutants
   N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) #calculating number of WT juvenile individual
@@ -35,6 +36,8 @@ simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a,
   
   return(c(N_jt, N_at, N_jtM, N_atM))
 }
+
+
 ```
 
 ## Simulate a population trajectory
@@ -321,6 +324,7 @@ for(x in unique(data_table_RvsS$Current_R)){
 }
 
 colnames(summary_table) <- c("rescue probability","Reproduction rate", "Current_S_Adults", "Current_S_juveniles")
+summary_table <- as.data.frame(summary_table)
 
 ```
 
@@ -332,16 +336,94 @@ add_Mut_lambda <- function(summary_table){
   for (i in 1:nrow(summary_table)) {
   current_l_matrix_Mut <- matrix(c(
     0, summary_table[i,"Reproduction rate"],
-    summary_table[i,"Current_S_juveniles"], summary_table[i,"Current_S_adults"]
+    summary_table[i,"Current_S_juveniles"], summary_table[i,"Current_S_Adults"]
   ), nrow = 2, byrow = TRUE)
   
   all_eigen <- eigen(current_l_matrix_Mut)
   current_growth_rate_mut <- max(Re(all_eigen$values))
-   
   summary_table[i,"lambda_mutant"] <- current_growth_rate_mut
   }
+  return(summary_table)
 }
+
+summary_table <- add_Mut_lambda(summary_table)
+
+  current_l_matrix_Mut <- matrix(c(
+    0, summary_table[1,"Reproduction rate"],
+    summary_table[1,"Current_S_juveniles"], summary_table[1,"Current_S_adults"]
+  ), nrow = 2, byrow = TRUE)
+summary_table[1,"Reproduction rate"]
+summary_table[1,"Current_S_juveniles"]
+summary_table[1,"Current_S_Adults"]
+current_l_matrix_Mut
 ```
+
+# do the new heat map with isoclines with gemini
+
+```{r}
+library(ggplot2)
+
+# 1. Prepare heatmap_df (from your R vs S simulation chunk)
+heatmap_df <- as.data.frame(summary_table)
+colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S_Adults")
+heatmap_df$rescue_prob      <- as.numeric(heatmap_df$rescue_prob)
+heatmap_df$Current_R        <- as.numeric(heatmap_df$Current_R)
+heatmap_df$Current_S_Adults <- as.numeric(heatmap_df$Current_S_Adults)
+
+# Reconstruct Current_S_Juveniles (since both scale with surv_val, S_jM = S_aM * (S_j / S_a))
+heatmap_df$Current_S_Juveniles <- heatmap_df$Current_S_Adults * (S_j / S_a)
+
+# Calculate Mutant Lambda directly for every row in the table
+heatmap_df$lambda <- (heatmap_df$Current_S_Adults + 
+  sqrt(heatmap_df$Current_S_Adults^2 + 4 * heatmap_df$Current_R * heatmap_df$Current_S_Juveniles)) / 2
+
+# 2. Plot Heatmap + Lambda Isoclines
+ggplot(heatmap_df, aes(x = Current_R, y = Current_S_Adults)) +
+  # Heatmap tiles (using continuous x and y!)
+  geom_tile(aes(fill = rescue_prob), color = "white", linewidth = 0.2) +
+  
+  # Isoclines for lambda = 1.0, 1.05, 1.1, 1.15, 1.2
+  geom_contour(
+    aes(z = lambda), 
+    breaks = seq(0.95, 1.3, by = 0.05),
+    color = "black", 
+    linewidth = 0.8,
+    linetype = "dashed"
+  ) +
+  
+  # Highlight the critical lambda = 1 threshold in solid white/black
+  geom_contour(
+    aes(z = lambda), 
+    breaks = 1.0,
+    color = "cyan", 
+    linewidth = 1.2
+  ) +
+  
+  # Show Juvenile Survival on the right Y-axis
+  scale_y_continuous(
+    name = "Mutant Adult Survival Rate (S_aM)",
+    sec.axis = sec_axis(~ . * (S_j / S_a), name = "Mutant Juvenile Survival Rate (S_jM)")
+  ) +
+  scale_fill_viridis_c(
+    limits = c(0, 1), 
+    option = "plasma", 
+    name = "Rescue\nProbability"
+  ) +
+  labs(
+    title = "Evolutionary Rescue Probability with Growth Rate Isoclines",
+    subtitle = "Solid cyan line: lambda = 1.0 | Dashed black lines: lambda isoclines (step = 0.05)",
+    x = "Mutant Reproduction Rate (R_aM)"
+  ) +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+```
+
+# do the heat map with isoclines with gemini using exact lambdas
+
+```{r}
+
+```
+
 
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
