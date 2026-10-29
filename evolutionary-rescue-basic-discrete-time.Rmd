@@ -267,8 +267,8 @@ for (repro_val in seq(1,1.5,0.05)) {
     
     # Calculate modified rates based on current loop values 
     current_R_aM <- R_a * repro_val
-    current_S_aM <- S_j * surv_val
-    current_S_jM <- S_a * surv_val
+    current_S_aM <- S_a * surv_val
+    current_S_jM <- S_j * surv_val
     
     # reset counter for replicates
     i <- 1
@@ -306,7 +306,7 @@ for (repro_val in seq(1,1.5,0.05)) {
 }
 
 # define column names of data table
-colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S")
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S_Juveniles")
 
 # Convert to data frame
 data_table_RvsS <- as.data.frame(data_table)
@@ -347,18 +347,10 @@ ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S), fill = resc
   scale_fill_viridis_c(
     limits = c(0, 1), 
     option = "plasma", 
-    name = "Rescue\nProbability"
-  ) +
-  labs(
-    title = "Evolutionary Rescue Probability",
-    x = "Reproduction Rates",
-    y = "Survival Rates"
-  ) +
+    name = "Rescue\nProbability") +
+  labs( title = "Evolutionary Rescue Probability",x = "Reproduction Rates", y = "Survival Rates Adults") +
   theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    panel.grid = element_blank()
-  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),panel.grid = element_blank()) +
   coord_fixed()
 ```
 
