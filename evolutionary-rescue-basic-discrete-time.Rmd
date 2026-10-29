@@ -36,6 +36,8 @@ simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a,
   return(c(N_jt, N_at, N_jtM, N_atM))
 }
 
+test <- simulate_one_gen(100,100,0,0,0.9,1.5,1,1,0,0,0.01)
+test
 ```
 
 ## Simulate a population trajectory
@@ -64,7 +66,8 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
   return(pop_vector)
 }
 
-
+test_2 <- simulate_pop(100,100,0,0,0.9,1.5,1,1,0,0,0.01,1000)
+test_2
 ```
 
 # pro version of plots by tobias with ggplot()
@@ -267,8 +270,8 @@ for (repro_val in seq(1,1.5,0.05)) {
     
     # Calculate modified rates based on current loop values 
     current_R_aM <- R_a * repro_val
-    current_S_aM <- S_a * surv_val
-    current_S_jM <- S_j * surv_val
+    current_S_aM <- S_j * surv_val
+    current_S_jM <- S_a * surv_val
     
     # reset counter for replicates
     i <- 1
@@ -306,7 +309,7 @@ for (repro_val in seq(1,1.5,0.05)) {
 }
 
 # define column names of data table
-colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S_Juveniles")
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size", "Current_R", "Current_S")
 
 # Convert to data frame
 data_table_RvsS <- as.data.frame(data_table)
@@ -329,6 +332,25 @@ colnames(summary_table) <- c("rescue probability","Reproduction rate", "Current_
 
 ```
 
+#### add the mutant lambda
+
+```{r}
+summary_table$lambda_mutant <- 0
+add_Mut_lambda <- function(summary_table){
+  for (i in 1:nrow(summary_table)) {
+  current_l_matrix_Mut <- matrix(c(
+    0, summary_table[i,"Reproduction rate"],
+    summary_table[i,"Current_S_juveniles"], summary_table[i,"Current_S_adults"]
+  ), nrow = 2, byrow = TRUE)
+  
+  all_eigen <- eigen(current_l_matrix_Mut)
+  current_growth_rate_mut <- max(Re(all_eigen$values))
+   
+  summary_table[i,"lambda_mutant"] <- current_growth_rate_mut
+  }
+}
+```
+
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
 ```{r}
@@ -347,10 +369,18 @@ ggplot(heatmap_df, aes(x = factor(Current_R), y = factor(Current_S), fill = resc
   scale_fill_viridis_c(
     limits = c(0, 1), 
     option = "plasma", 
-    name = "Rescue\nProbability") +
-  labs( title = "Evolutionary Rescue Probability",x = "Reproduction Rates", y = "Survival Rates Adults") +
+    name = "Rescue\nProbability"
+  ) +
+  labs(
+    title = "Evolutionary Rescue Probability",
+    x = "Reproduction Rates",
+    y = "Survival Rates"
+  ) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),panel.grid = element_blank()) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    panel.grid = element_blank()
+  ) +
   coord_fixed()
 ```
 
@@ -473,8 +503,11 @@ For the equation i need to calculate the selection coefficient + the initial gro
 ```{r}
 
 # --- 1. BASE PARAMETERS ---
-N_j0 <-50
+N_0 <- 100
+N_j0 <- 50
 N_a0 <- 50
+# N_j0 <- round(N_0 * stabile_verteilung[1])
+# N_a0 <- round(N_0 * stabile_verteilung [2])
 N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
@@ -499,8 +532,8 @@ for (repro_val in seq(1,1.5,0.05)) {
     
     # Calculate modified rates based on current loop values
     current_R_aM <- R_a * repro_val
-    current_S_aM <- S_j * surv_val
-    current_S_jM <- S_a * surv_val
+    current_S_aM <- S_a * surv_val
+    current_S_jM <- S_j * surv_val
     
     # reset counter for replicates
     i <- 1
@@ -560,12 +593,19 @@ summary_table <- as.data.frame(summary_table)
     0, R_a,
     S_j, S_a
   ), nrow = 2, byrow = TRUE)
-  
+  # Eigenanalyse berechnen
+  ev <- eigen(l_matrix_WT)
   all_eigen <- eigen(l_matrix_WT)
-  growth_rate_WT <- max(Re(all_eigen$values))
-  l_matrix_WT
+  # 1. Dominanter Eigenwert (Wachstumsrate lambda)
+  # Der betragsgrößte Eigenwert steht an Position 1
+  growth_rate_WT <- max(Re(ev$values[1]))
   r <-  1 - growth_rate_WT
-  r
+  
+  # 2. Rechter Eigenvektor (stabile Altersverteilung)
+  # Imaginärteil verwerfen und auf Summe = 1 normieren
+  w <- Re(ev$vectors[, 1])
+  stabile_verteilung <- w / sum(w)
+  
 
 # here i want to add the corresponding s-values to the summary_table
   # Calculate difference in days, then convert to approximate years
@@ -639,4 +679,185 @@ summary_table <- as.data.frame(summary_table)
     ) +
     scale_color_manual(values = c("Simulated" = "steelblue", "Formula" = "darkorange")) +
     ylim(0, 1)
+```
+
+## Sanity checking
+
+```{r}
+
+# --- 1. BASE PARAMETERS ---
+N_0 <- 100
+N_j0 <- round(N_0 * stabile_verteilung[1])
+N_a0 <- round(N_0 * stabile_verteilung [2])
+N_j0M <- 0
+N_a0M <- 0
+R_a <- 0.9
+S_j <- 1
+S_a <- 0
+mu <- 0.01
+t_max <- 1000
+
+
+
+# Simulation repetitions
+no_replicates <- 100
+
+#data table initializing
+data_table <- c()
+
+# loop over reproduction selection
+for (repro_val in seq(1,1.5,0.05)) {
+  
+  # loop over survival selection
+  for (surv_val in seq(1, 1, 1)) {
+    
+    # Calculate modified rates based on current loop values
+    current_R_aM <- R_a * repro_val
+    current_S_aM <- S_a * surv_val
+    current_S_jM <- S_j * surv_val
+    
+    # reset counter for replicates
+    i <- 1
+    
+    repeat {
+      # run the simulation once with the modified parameters
+      one_run <- simulate_pop(N_j0, N_a0, N_j0M, N_a0M, 
+                              R_a, current_R_aM, 
+                              S_j, current_S_jM, 
+                              S_a, current_S_aM, 
+                              mu, t_max)
+      
+      # determine total population sizes
+      total_size <- one_run[,1] + one_run[,2] + one_run[,3] + one_run[,4]
+      
+      # determine minimum population size
+      min_size <- min(total_size)
+      
+      # determine (first) generation at which this population size occurred
+      min_gen <- as.numeric(which(total_size == min_size)[1])
+      
+      # enter the data into the table
+      data_table <- rbind(data_table, c(repro_val, surv_val, min_gen, min_size))
+      
+      # stop the repeated computation after no_replicates times
+      if (i >= no_replicates) break
+      
+      # increase counter by one
+      i <- i + 1
+    }
+  }
+}
+
+# define column names of data table
+colnames(data_table) <- c("repro_multiplier", "surv_multiplier", "min_gen", "min_size")
+
+# Convert to data frame
+data_table_analysis <- as.data.frame(data_table)
+# Add "rescued" column
+data_table_analysis$rescued <- data_table_analysis$min_size != 0
+
+
+
+summary_table <- c()
+for(x in unique(data_table_analysis$repro_multiplier)){
+  for(s in unique(data_table_analysis$surv_multiplier)){
+    data_table_filter <- data_table_analysis[data_table_analysis$repro_multiplier == x & data_table_analysis$surv_multiplier == s,]
+    summary_table <- rbind(summary_table, c(mean(data_table_filter$rescued), x, s))
+  } 
+}
+
+colnames(summary_table) <- c("resque probability", "repro_multiplier", "surv_multiplier")
+summary_table <- as.data.frame(summary_table)
+# the initial r-value is the same for all
+# define WT leslie matrix, get growth rate and define "r"
+l_matrix_WT <- matrix(c(
+  0, R_a,
+  S_j, S_a
+), nrow = 2, byrow = TRUE)
+# Eigenanalyse berechnen
+ev <- eigen(l_matrix_WT)
+all_eigen <- eigen(l_matrix_WT)
+# 1. Dominanter Eigenwert (Wachstumsrate lambda)
+# Der betragsgrößte Eigenwert steht an Position 1
+growth_rate_WT <- max(Re(ev$values[1]))
+r <-  1 - growth_rate_WT
+
+# 2. Rechter Eigenvektor (stabile Altersverteilung)
+# Imaginärteil verwerfen und auf Summe = 1 normieren
+w <- Re(ev$vectors[, 1])
+stabile_verteilung <- w / sum(w)
+
+
+# here i want to add the corresponding s-values to the summary_table
+# Calculate difference in days, then convert to approximate years
+# make function to generally get the selection_coefficient
+# first create a new column for the summary_table
+summary_table$selection_coefficient <- 0
+
+get_s <- function(R_a, S_j, S_a, summary_table, r, growth_rate_WT){
+  selection_coefficients <- c()
+  for (i in 1:nrow(summary_table)) {
+    #make the current matrix and calculate the current_mut_r
+    R_aM <- R_a * summary_table[i, "repro_multiplier"]
+    S_jM <- S_j * summary_table[i, "surv_multiplier"]
+    S_aM <- S_a * summary_table[i, "surv_multiplier"]
+    current_l_matrix_Mut <- matrix(c(
+      0, R_aM,
+      S_jM, S_aM
+    ), nrow = 2, byrow = TRUE)
+    
+    all_eigen <- eigen(current_l_matrix_Mut)
+    current_mut_r <- max(Re(all_eigen$values))
+    
+    current_selection_coefficient <- current_mut_r - growth_rate_WT
+    
+    summary_table[i, "selection_coefficient"] <- current_selection_coefficient
+    print(current_selection_coefficient)
+    
+  }
+  return(summary_table)
+}
+
+summary_table <- get_s(R_a, S_j, S_a, summary_table, r, growth_rate_WT)
+
+# now i wan't to calculate the P_new and add it to the summary_table
+summary_table$rescue_probability_equation <- 0
+N_0 <- N_a0 + N_a0M + N_j0 + N_j0M
+add_p_new <- function(N_0, mu, r, summary_table){
+  for (i in 1:nrow(summary_table)){
+    s <- summary_table[i, "selection_coefficient"]
+    P_new <- 1 - exp(-(2*N_0*mu*(s-r))/(r))
+    summary_table[i, "rescue_probability_equation"] <- P_new
+  }
+  return(summary_table)
+}
+
+summary_table <- add_p_new(N_0, mu, r, summary_table)
+
+# 1. Calculate mutant lambda (growth_rate_WT + s)
+summary_table$lambda_mutant <- growth_rate_WT + summary_table$selection_coefficient
+
+# 2. Filter out negative estimated rescue probabilities and reshape for plotting
+plot_data <- summary_table %>%
+  filter(rescue_probability_equation >= 0) %>%
+  rename(Simulated = `resque probability`, Formula = rescue_probability_equation) %>%
+  pivot_longer(
+    cols = c(Simulated, Formula),
+    names_to = "Source",
+    values_to = "Rescue_Probability"
+  )
+
+# 3. Create the plot
+ggplot(plot_data, aes(x = lambda_mutant, y = Rescue_Probability, color = Source)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(se = FALSE, method = "loess", span = 0.8) +
+  theme_minimal() +
+  labs(
+    title = "Evolutionary Rescue Probability vs. Mutant Growth Rate",
+    x = expression(paste("Mutant Growth Rate (", lambda[mut], ")")),
+    y = "Rescue Probability",
+    color = "Type"
+  ) +
+  scale_color_manual(values = c("Simulated" = "steelblue", "Formula" = "darkorange")) +
+  ylim(0, 1)
 ```
