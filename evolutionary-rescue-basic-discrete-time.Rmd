@@ -1,11 +1,47 @@
 ---
 title: "Basic model of evolutionary rescue in discrete time"
-author: "Claudia Bank"
-date: "2026-10-13"
+authors: "Tobias Pfau & Joschka Rewicki"
+date: "05.11.2026"
 output:
   html_document:
     df_print: paged
 ---
+
+### Abstract
+
+Evolutionary rescue occurs when an initially maladapted population adapts to a severe environmental change via advantageous mutations before going extinct. While theoretical models often treat populations as homogeneous, real populations feature distinct age structures. This project extends a standard discrete-time model of evolutionary rescue to include juvenile and adult life stages. We simulate population trajectories to evaluate how mutations affecting stage-specific survival rates or reproduction rates influence the probability of evolutionary rescue.
+
+### Introduction
+
+When a sudden environmental change occurs, a population may become unfit and experience rapid decline[citation]. If a beneficial mutation arises and spreads fast enough to outcompete the declining wild type, the population can avoid extinction—a process known as evolutionary rescue[citation].
+
+While basic models of evolutionary rescue are well-established, they rarely account for the demographic realities of stage-structured populations. Our research question is: **How does age structure (specifically, juvenile versus adult life stages) influence the probability of evolutionary rescue when mutations provide stage-specific advantages?** This is an interesting question because in natural populations, environmental stressors and genetic adaptations often disproportionately affect specific life stages. By separating survival and reproduction into juvenile and adult phases, we can investigate whether a survival advantage in adults is more effective at driving evolutionary rescue than a survival advantage in juveniles, or how these compare to reproductive advantages.
+
+### Model & Methods
+
+#### Model Sketch and Life Cycle
+
+We model a haploid population with two distinct life stages: juveniles and adults. The life cycle proceeds in discrete generations as follows:
+
+1.  **Reproduction:** Adults reproduce, producing a Poisson-distributed number of juvenile offspring.
+
+2.  **Mutation:** A proportion of wild-type offspring mutate into the beneficial mutant genotype.
+
+3.  **Maturation & Survival:** Juveniles survive to become adults in the next generation based on a juvenile survival probability. Existing adults survive to the next generation based on an adult survival probability.
+
+#### Parameters and Variables
+
+The model relies on the following parameters and variables:
+
+| Parameter / Variable | Description |
+|:-----------------------------------|:-----------------------------------|
+| `N_j0` / `N_a0` | Initial population size of wild-type juveniles / adults |
+| `N_j0M` / `N_a0M` | Initial population size of mutant juveniles / adults |
+| `R_a` / `R_aM` | Reproduction rate (offspring per individual) of wild-type / mutant adults |
+| `S_j` / `S_jM` | Survival probability of wild-type / mutant juveniles |
+| `S_a` / `S_aM` | Survival probability of wild-type / mutant adults |
+| `mu` | Mutation rate per generation |
+| `t_max` | Maximum number of generations to simulate |
 
 ### installing packages for plotting
 
@@ -16,25 +52,28 @@ install.packages("ggplot2")
 install.packages("gghighlight")
 ```
 
-# Simulate one generation
+#### Simulating a Single Generation
 
-There was an error because some values were negative. That's why we put the max() at some places.
+The following code chunk defines the function to simulate a single generation of the population. It calculates the newly mutated number of juveniles as the number adults times the reproduction rate and mutation rate. The number of WT juveniles is calculated by multiplying the number of adults in the previous generation with their reproduction and substracting the number of newly mutated juveniles. Also the new number of both mutant and WT adults is calculated by adding the number of adults / juveniles of the previous generation which are both multiplied by their corresponding survival rates. Due to an error occuring because some values were negative we put the max() at all places to avoid this, even if it may be unnecessary.
 
 ```{r}
 # Simulate WT-Population without any mutations and stochasticity
 simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu){
-  set.seed(seed)
-  N_a0 <- max(N_a0, 0) #we use max to avoid negative 
-  New_jtM <- max(rpois(1, N_a0 * mu * R_a), 0) #New Juvenile mutants
-  N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) #calculating number of WT juvenile individual
   
-  N_at <- max(rpois(1, S_j * N_j0 + S_a * N_a0), 0) #calculating number of adult individuals
+  N_a0 <- max(N_a0, 0) 
   
+  New_jtM <- max(rpois(1, N_a0 * mu * R_a), 0) # Calculate new mutant juveniles
   
-  N_jtM <- max(rpois(1, N_a0M * R_aM) + New_jtM, 0) # calculating number of Mutant juveniles
-  N_atM <- max (rpois(1, N_j0M * S_jM + S_aM * N_a0M), 0) # calculating number of Mutant adults
+  N_jt <- max(rpois(1, R_a * N_a0) - New_jtM, 0) # Calculate number of WT juveniles
   
-  return(c(N_jt, N_at, N_jtM, N_atM))
+  N_at <- max(rpois(1, S_j * N_j0 + S_a * N_a0), 0) # Calculate number of WT adults
+  
+  N_jtM <- max(rpois(1, N_a0M * R_aM) + New_jtM, 0) # Calculate number of total mutant juveniles
+  
+  N_atM <- max (rpois(1, N_j0M * S_jM + S_aM * N_a0M), 0) # Calculate number of mutant adults
+  
+  # return the number of individuals for each combination of age class and haplotype
+  return(c(N_jt, N_at, N_jtM, N_atM)) 
 }
 
 
@@ -42,40 +81,47 @@ simulate_one_gen <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a,
 
 ## Simulate a population trajectory
 
+To track the population over time until it either goes extinct or undergoes evolutionary rescue, we loop the single-generation function. This chunk defines the trajectory function and sets a break condition to stop the simulation early if the population recovers (exceeds some multiple of the initial size) or goes completely extinct.
+
 ```{r}
+# define function to simulate population trajectory
 simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max) {
-   # Create the vector in which to save the results
+  
+  # Create vector in which all generations are saved + vector in which current generation is saved
   pop_vector <- c(N_j0, N_a0, N_j0M, N_a0M) 
-  # initiate the variables
   pop_new <- c(N_j0, N_a0, N_j0M, N_a0M)
   
   # run the simulation until generation t_max
-  for (i in 1:t_max+1) {
-    # redefine the current population one generation later
+  for (i in 1:t_max+1) { 
+    
+    # define pop_new as the output of simulate_one_gen with the number of individuals from the generation before
     pop_new <- simulate_one_gen(pop_new[1],pop_new[2],pop_new[3],pop_new[4], R_a,R_aM, S_j, S_jM, S_a, S_aM, mu)
     
-    # add the new population sizes to the output vector
+    # add the new numbers of individuals to the output vector
     pop_vector <- rbind(pop_vector,pop_new)
-    # condition to stop the simulation before t_max: either the population exceeds 10 times the original population size, or it goes extinct
-    if ( (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4] >=10*(N_j0+ N_a0 + N_j0M+ N_a0M)) | (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4]==0)) break }
+    
+    # condition to stop the simulation before t_max: either the population exceeds x times the original population   size, or it goes extinct
+    if ( (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4] >=1.5*(N_j0+ N_a0 + N_j0M+ N_a0M)) | (pop_new[1]+pop_new[2]+ pop_new[3]+pop_new[4]==0)) break }
   
   # add row and column names
   colnames(pop_vector) <- c("AC1", "AC2", "AC1M", "AC2M")
   rownames(pop_vector) <- (0:t_max)[1:length(pop_vector[,1])]
   
+  # in the end we want the population trajectory, which is in "pop_vector"
   return(pop_vector)
 }
 
 ```
 
-# pro version of plots by tobias with ggplot()
+# Plot the population trajectory with ggplot()
 
 ```{r}
-
+# libraries needed to plot the population trajectory
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 
+# define the parameters under which we want to simulate the population trajectory
 N_j0 <- 50
 N_a0 <- 50
 N_j0M <- 0
@@ -98,7 +144,7 @@ df$Generation <- as.numeric(rownames(df))
 # Reshape from Wide to Long format for ggplot
 # This creates a column "Age_Class" (AC1, AC2, etc.) and "Population_Size". 
 
-#pivot_longer syntaxc first define what data you are looking at. here we are looking at df our data frame. cols defines which columns to convert into the long format. we want to convert our Age class collumns into long format. names_to defines what the new column name should be. 
+#pivot_longer syntaxc first define what data you are looking at. here we are looking at df, our data frame. cols defines which columns to convert into the long format. we want to convert our Age class collumns into long format. names_to defines what the new column name should be. 
 
 df_long <- pivot_longer(
   df, 
@@ -128,13 +174,18 @@ ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, line
 
 ```
 
-## Compare juvenile- vs. adult survival rate increase in mutants
+### Comparing Juvenile vs. Adult Survival Rate Increase in Mutants
 
-We have to figure out which ranges of survival rates make sense. So the growth rate of the wildtypes should be below 1 and for the mutants it should be more than 1 probably.
+To determine whether the life stage at which adaptation occurs influences the likelihood of evolutionary rescue, we compare scenarios where the beneficial mutation increases either juvenile survival ($S_j \rightarrow S_{jM}$) or adult survival ($S_a\rightarrow S_{aM}$). For evolutionary rescue to be necessary and possible, the wild-type population must have a sub-critical growth rate ($\lambda < 1$), whereas the mutant must be capable of achieving a supercritical growth rate ($\lambda > 1$).
+
+We set baseline wild-type survival parameters ($S_j = 0.2$, $S_a = 0.5$) and adult reproduction ($R_a = 2$). We then systematically vary a selection coefficient multiplier (`s_coeff`) from 1.0 to 2.0 in steps of 0.05. For each parameter combination, we run 1,000 stochastic replicate simulations up to $t_{\text{max}} = 1000$ generations. A simulation is scored as rescued if the minimum recorded total population size does not drop to zero. From these runs, we calculate the empirical rescue probability across the range of absolute survival rates for both life stages to compare their relative impact on evolutionary rescue.
 
 ```{r}
-# set some parameters to fixed values
 
+# setting the seed
+set.seed(123)
+
+# define the parameters under which we want to simulate the population trajectory
 N_j0 <-50
 N_a0 <- 50
 N_j0M <- 0
@@ -148,34 +199,42 @@ t_max <- 1000
 
 
 
-# determine how often to run the simulation for each set of parameters
+# determine how often to run the simulation for each set of parameters / how many replicates we want
 no_replicates <- 1000
 
 # initialize data table - where to collect the results
 data_table_survcompare <- c()
 
-# Doing a parameter sweep
+# Doing a parameter sweep:
+# We want all s_coeff (= relative increase in survival) for juveniles and adults)
+
+
 for (selection_on_jM in c(TRUE,FALSE)){
-  for (s_coeff in seq(1, 2, 0.05)){
-    S_j <- 0.2
-    S_jM <- S_j * ifelse(selection_on_jM, s_coeff, 1)
-    S_a <- 0.5
-    S_aM <- S_a * ifelse(selection_on_jM, 1, s_coeff)
+  for (s_coeff in seq(1, 2, 0.05)){ #s_coeff from first number to second number in steps of third number
+    S_j <- 0.2 # survival probability of WT juveniles
+    
+    # if selection_on_jM is true (= survival of juvenile Mutants is increased) the survival of the juvenile mutants is calculated by multiplying the WT juvenile survival with the S_coeff. If not its the same es the WT juvenile survival
+    S_jM <- S_j * ifelse(selection_on_jM, s_coeff, 1) # survival probability of mutant juveniles
+    
+    S_a <- 0.5 # survival probability of WT adults
+    
+    # same as above with S_jM just the other way around for the adult mutants survival
+    S_aM <- S_a * ifelse(selection_on_jM, 1, s_coeff) # survival probability of mutant adults
   
    
     i<-1
     repeat {
       # increase counter by one
       i<-i+1
-      # run the simulation once
+      # run the simulation (population trajectory) once with the corresponding parameters
       one_run <- simulate_pop(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max)
       # determine total population sizes
       total_size <- one_run[,1]+one_run[,2] +one_run[,3]+one_run[,4]
-      # determine minimum population size
+      # determine minimum population size through the whole simulation
       min_size <- min(total_size)
       # determine (first) generation at which this population size occurred
       min_gen <- as.numeric(which(total_size==min_size)[1])
-      #adding absollute survival
+      #defining absolute survival for each run
       S_abs <- ifelse(selection_on_jM, S_jM, S_aM)
       # enter the data into the table
       data_table_survcompare <- rbind(data_table_survcompare,c(s_coeff,S_abs,ifelse(selection_on_jM, "on_juveniles", "on_adults"),min_gen,min_size)) # note that we add the varying parameters (decay rate and selection coefficient) to the table too
@@ -195,14 +254,15 @@ df <- as.data.frame(data_table_survcompare)
 df$S_abs <- as.numeric(df$S_abs)
 df$min_gen <- as.numeric(df$min_gen)
 df$no_min <- as.numeric(df$no_min)
-
 df$rescued <- df$no_min != 0
 
 #try if the basic principle of getting the rescue-probability works
 df_filter <- df[df$s_coeff == 1 & df$ac_s == "on_juveniles",]
 
-#creating a empty table to put the stuff to plot in
+#creating an empty table to put the stuff to plot in
 plot_table <- c()
+
+# creating the 
 for(x in unique(df$ac_s)){
  for(s in unique(df$S_abs)){
   df_filter <- df[df$S_abs == s & df$ac_s == x,]
@@ -237,7 +297,11 @@ ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.` , color =
 
 ```
 
-## comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
+### Comparing Mutated Reproduction Rate vs. Mutated Survival Rate
+
+Mutations in nature can alter reproductive output, survival probabilities, or both simultaneously. To understand how these two life-history traits interact in driving rescue dynamics, we evaluate combinations of increased adult fecundity ($R_a \rightarrow R_{aM}$) and stage survival rates ($S_a \rightarrow S_{aM}$ and $S_j \rightarrow S_{jM}$).
+
+We conduct a two-dimensional parameter sweep across reproduction multipliers (ranging from 1.0 to 1.5) and survival multipliers (ranging from 1.0 to 1.2 applied to both juvenile and adult baseline survival). For every combination on this grid, we perform 100 stochastic replicates and compute the empirical probability of evolutionary rescue.
 
 ```{r}
 
@@ -255,7 +319,7 @@ t_max <- 1000
 
 
 # Simulation repetitions
-no_replicates <- 1000
+no_replicates <- 100
 
 #data table initializing
 data_table <- c()
@@ -332,6 +396,12 @@ write.csv(summary_table, "documents/github/THEE Practical Age Classes )
 
 #### add the mutant lambda
 
+To connect the demographic outcomes to population projection theory, we also calculate the dominant eigenvalue ($\lambda_{\text{mut}}$) from the mutant Leslie matrix:
+
+$$
+L_{\text{mut}} = \begin{pmatrix} 0 & R_{aM} \\ S_{jM} & S_{aM} \end{pmatrix}
+$$ The dominant eigenvalue of a Leslie matrix corresponds to the growth rate the population will have in the long-run, with values over 1 displaying a growing population and values below 1 showing a shrinking one.
+
 ```{r}
 summary_table$lambda_mutant <- 0
 add_Mut_lambda <- function(summary_table){
@@ -361,6 +431,8 @@ current_l_matrix_Mut
 ```
 
 # do the new heat map with isoclines with gemini
+
+We then construct a heatmap of rescue probabilities overlaid with analytical growth rate isoclines ($\lambda = 1.0, 1.05, 1.10$). This allows us to observe whether evolutionary rescue is strictly determined by the asymptotic growth rate $\lambda$, or if partitioning fitness gains into reproduction versus survival creates distinct demographic trajectories under stochasticity.
 
 ```{r}
 library(ggplot2)
@@ -425,7 +497,6 @@ ggplot(heatmap_df, aes(x = Current_R, y = Current_S_Adults)) +
 ```{r}
 
 ```
-
 
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
