@@ -113,71 +113,6 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
 
 ```
 
-## Plotting the population trajectories
-
-you can use this plot to show how the population will develop over time. You can mess around with parameters or simply run it to see that both extinction and rescue do happen.
-
-```{r}
-# libraries needed to plot the population trajectory
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
-# define the parameters under which we want to simulate the population trajectory
-N_j0 <- 50
-N_a0 <- 50
-N_j0M <- 0
-N_a0M <- 0
-R_a <- 2
-R_aM <- 2
-S_j <- 0.2
-S_jM <- 0.2
-S_a <- 0.5
-S_aM <- 0.5
-mu <- 0.01
-t_max <- 1000
-
-
-# having the simulation set as a variable 
-sim_data <- simulate_pop(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max)
-
-#Convert matrix to Dataframe to help analysis
-df <- as.data.frame(sim_data)
-
-# these steps were generated using ai help: The rownames are the Generation numbers. Let's make them a proper column.
-df$Generation <- as.numeric(rownames(df))
-
-# Reshape from Wide to Long format for ggplot
-# This creates a column "Age_Class" (AC1, AC2, etc.) and "Population_Size". 
-
-#pivot_longer syntaxc first define what data you are looking at. here we are looking at df, our data frame. cols defines which columns to convert into the long format. we want to convert our Age class collumns into long format. names_to defines what the new column name should be. 
-
-df_long <- pivot_longer(
-  df, 
-  cols = c("AC1", "AC2", "AC1M", "AC2M"), 
-  names_to = "Age_Class", 
-  values_to = "Population_Size"
-)
-
-ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, linetype = Age_Class)) +
-  geom_line(linewidth = 1) +
-  scale_color_manual(values = c(
-    "AC1" = "lightgreen",
-    "AC2" = "darkgreen",
-    "AC1M" = "red",
-    "AC2M" = "darkred")) +
-  labs(title = "Simulating Evolutionary Rescue with 2 Age classes", x = "Generations", y = "Population Size", color = "Age Classes", linetype = "Age Classes")+
-  scale_linetype_manual(values = c(
-    "AC1" = 1,
-    "AC1M" = 1,
-    "AC2" = 2,
-    "AC2M" = 2))
-  
-
-
-```
-
-
 ### Comparing Juvenile vs. Adult Survival Rate Increase in Mutants
 
 To determine whether the life stage at which adaptation occurs influences the likelihood of evolutionary rescue, we compare scenarios where the beneficial mutation increases either juvenile survival ($S_j \rightarrow S_{jM}$) or adult survival ($S_a\rightarrow S_{aM}$). For evolutionary rescue to be necessary and possible, the wild-type population must have a sub-critical growth rate ($\lambda < 1$), whereas the mutant must be capable of achieving a supercritical growth rate ($\lambda > 1$).
@@ -280,77 +215,6 @@ colnames(plot_table) <- c("rescue prob.","ac_s","S_absolute")
 write.csv(plot_table, "documents/github/THEE Practical Age Classes/data")
 
 ```
-
-## Results
-
-### Plotting Comparing the effect of increasing Juvenile Survival rates vs increasing Adults survival rates on Evolutionary rescue.
-
-```{r}
-library(ggplot2)
-library(gghighlight)
-library(dplyr)
-library(tidyr)
-plot_table_survcompare <- as.data.frame(plot_table) #converting the table to a data frame
-plot_table_survcompare$S_absolute <- as.numeric(plot_table_survcompare$S_absolute) 
-#values treated as numeric to allow for ggplot to recognize them
-plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`rescue prob.`))
-
-
-Plot_Survcompare <- ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.`, 
-color = ifelse(!is.na(`rescue prob.`) & ac_s == "on_juveniles" & S_absolute == min(S_absolute[ac_s == "on_juveniles" & !is.na(`rescue prob.")]), "WT Juvenile", #marks the lowest data point for the on_juveniles, this is the data point for the wild type Juvenile
-    ifelse(
-        !is.na(`rescue prob.`) & ac_s == "on_adults" & S_absolute == min(S_absolute[ac_s == "on_adults" & !is.na(`rescue prob.")]), "WT Adult", #marks the lowest data point for the on_adults, this is the data point for the wild type Adult
-        ac_s)))) +
-  
-  geom_point()+ #we use a scatter plot to plot our data 
-  labs(x = "survival rate", y = "rescue probabability", title = "Comparing Adult mutant survival rates vs Juvenile mutant survival rates", subtitle = "and how they effect Evolutionary rescue", color = "Which age group")+
-  scale_color_manual(values = c("on_adults" = "red",
-                     "on_juveniles" = "lightblue",
-                     "WT Juvenile" = "darkblue",
-                     "WT Adult" = "maroon" ))
-
-  
-print(Plot_Survcompare)
-
-
-#ggsave(Plot_Survcompare, 
-       #filename = "Plot_Survcompare.pdf",
-       #device = "pdf")
-  
-  
-
-```
-
-The parameters used in this simulation are as follows
-
-- N_j0 =50 (Number of Juvenile WT individuals at time point 0)
-
-- N_a0 = 50 (Number of Adult WT individuals at time point 0)
-
-- N_j0M = 0 (Number of Juvenile Mutant individuals at time point 0)
-
-- N_a0M = 0 (Number of Adult Mutant individuals at time point 0)
-
-- R_a = 2 (reproduction rate of WT adult individuals)
-
-- R_aM = 2 (reproduction rate of Mutant adult individuals
-
-- S_j = 0.2 (Survival Rate of Juvenile WT individuals)
-
-- S_a = 0.5 (Survival Rate of Adult WT individuals)
-
-- mu = 0.01 (mutation rate)
-
-- t_max = 1000 (max simulation time)
-
-- no_replicates = 1000 (number of replicates)
-
-Using a Scatter plot we plot the rescue probabilities of the whole population with varying survival rates. The only parameter that varies is the survival rates of either the Adults or the mutants. In this simulations the mutation does not effect the Reproduction rate meaning it is the same as the wildtype R = 0.2. The Wildtypes are the first data points marked in maroon and dark blue. Every data point after these initial points (moving to the left on the x axis) is a mutant.
-
-The First point (left most point) in both the on_juveniles and on_adults graph is the Wild type individual. As you move towards the right on the X axis the survival rate is increased by a factor of 0.05. The Y axis shows the mean rescue probability over 1000 replicates with the specific parameters. We can see a steeper curve when the survival rate of the juveniles is modified compared to when we modify the survival rate of the adults. The highest simulated rescue probability occurs when you double the survival rate of the juveniles rescue probability of 0.754. when we double the survival rate of the adults we observe a lower rescue probability of 0.625. When modifying the juvenile survival rates we see the first increase in rescue probability after 5 increments. compared to the adults when we already observe an increase after 4 increments. In both graphs we observe little drop in survival probabilites as we near the final simulation (on_adults 5th data point from the right, on_juveniles 2nd data point from the right)
-
-
-## comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
 
 ### Comparing Mutated Reproduction Rate vs. Mutated Survival Rate
 
@@ -486,6 +350,136 @@ current_l_matrix_Mut
 ```
 
 ## Results
+
+### Plotting the population trajectories
+
+you can use this plot to show how the population will develop over time. You can mess around with parameters or simply run it to see that both extinction and rescue do happen.
+
+```{r}
+# libraries needed to plot the population trajectory
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# define the parameters under which we want to simulate the population trajectory
+N_j0 <- 50
+N_a0 <- 50
+N_j0M <- 0
+N_a0M <- 0
+R_a <- 2
+R_aM <- 2
+S_j <- 0.2
+S_jM <- 0.2
+S_a <- 0.5
+S_aM <- 0.5
+mu <- 0.01
+t_max <- 1000
+
+
+# having the simulation set as a variable 
+sim_data <- simulate_pop(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max)
+
+#Convert matrix to Dataframe to help analysis
+df <- as.data.frame(sim_data)
+
+# these steps were generated using ai help: The rownames are the Generation numbers. Let's make them a proper column.
+df$Generation <- as.numeric(rownames(df))
+
+# Reshape from Wide to Long format for ggplot
+# This creates a column "Age_Class" (AC1, AC2, etc.) and "Population_Size". 
+
+#pivot_longer syntaxc first define what data you are looking at. here we are looking at df, our data frame. cols defines which columns to convert into the long format. we want to convert our Age class collumns into long format. names_to defines what the new column name should be. 
+
+df_long <- pivot_longer(
+  df, 
+  cols = c("AC1", "AC2", "AC1M", "AC2M"), 
+  names_to = "Age_Class", 
+  values_to = "Population_Size"
+)
+
+ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, linetype = Age_Class)) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(values = c(
+    "AC1" = "lightgreen",
+    "AC2" = "darkgreen",
+    "AC1M" = "red",
+    "AC2M" = "darkred")) +
+  labs(title = "Simulating Evolutionary Rescue with 2 Age classes", x = "Generations", y = "Population Size", color = "Age Classes", linetype = "Age Classes")+
+  scale_linetype_manual(values = c(
+    "AC1" = 1,
+    "AC1M" = 1,
+    "AC2" = 2,
+    "AC2M" = 2))
+  
+
+
+```
+
+### Plotting Comparing the effect of increasing Juvenile Survival rates vs increasing Adults survival rates on Evolutionary rescue.
+
+```{r}
+library(ggplot2)
+library(gghighlight)
+library(dplyr)
+library(tidyr)
+plot_table_survcompare <- as.data.frame(plot_table) #converting the table to a data frame
+plot_table_survcompare$S_absolute <- as.numeric(plot_table_survcompare$S_absolute) 
+#values treated as numeric to allow for ggplot to recognize them
+plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`rescue prob.`))
+
+
+Plot_Survcompare <- ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.`, 
+color = ifelse(!is.na(`rescue prob.`) & ac_s == "on_juveniles" & S_absolute == min(S_absolute[ac_s == "on_juveniles" & !is.na(`rescue prob.")]), "WT Juvenile", #marks the lowest data point for the on_juveniles, this is the data point for the wild type Juvenile
+    ifelse(
+        !is.na(`rescue prob.`) & ac_s == "on_adults" & S_absolute == min(S_absolute[ac_s == "on_adults" & !is.na(`rescue prob.")]), "WT Adult", #marks the lowest data point for the on_adults, this is the data point for the wild type Adult
+        ac_s)))) +
+  
+  geom_point()+ #we use a scatter plot to plot our data 
+  labs(x = "survival rate", y = "rescue probabability", title = "Comparing Adult mutant survival rates vs Juvenile mutant survival rates", subtitle = "and how they effect Evolutionary rescue", color = "Which age group")+
+  scale_color_manual(values = c("on_adults" = "red",
+                     "on_juveniles" = "lightblue",
+                     "WT Juvenile" = "darkblue",
+                     "WT Adult" = "maroon" ))
+
+  
+print(Plot_Survcompare)
+
+
+#ggsave(Plot_Survcompare, 
+       #filename = "Plot_Survcompare.pdf",
+       #device = "pdf")
+  
+  
+
+```
+
+The parameters used in this simulation are as follows
+
+-   N_j0 =50 (Number of Juvenile WT individuals at time point 0)
+
+-   N_a0 = 50 (Number of Adult WT individuals at time point 0)
+
+-   N_j0M = 0 (Number of Juvenile Mutant individuals at time point 0)
+
+-   N_a0M = 0 (Number of Adult Mutant individuals at time point 0)
+
+-   R_a = 2 (reproduction rate of WT adult individuals)
+
+-   R_aM = 2 (reproduction rate of Mutant adult individuals
+
+-   S_j = 0.2 (Survival Rate of Juvenile WT individuals)
+
+-   S_a = 0.5 (Survival Rate of Adult WT individuals)
+
+-   mu = 0.01 (mutation rate)
+
+-   t_max = 1000 (max simulation time)
+
+-   no_replicates = 1000 (number of replicates)
+
+Using a Scatter plot we plot the rescue probabilities of the whole population with varying survival rates. The only parameter that varies is the survival rates of either the Adults or the mutants. In this simulations the mutation does not effect the Reproduction rate meaning it is the same as the wildtype R = 0.2. The Wildtypes are the first data points marked in maroon and dark blue. Every data point after these initial points (moving to the left on the x axis) is a mutant.
+
+The First point (left most point) in both the on_juveniles and on_adults graph is the Wild type individual. As you move towards the right on the X axis the survival rate is increased by a factor of 0.05. The Y axis shows the mean rescue probability over 1000 replicates with the specific parameters. We can see a steeper curve when the survival rate of the juveniles is modified compared to when we modify the survival rate of the adults. The highest simulated rescue probability occurs when you double the survival rate of the juveniles rescue probability of 0.754. when we double the survival rate of the adults we observe a lower rescue probability of 0.625. When modifying the juvenile survival rates we see the first increase in rescue probability after 5 increments. compared to the adults when we already observe an increase after 4 increments. In both graphs we observe little drop in survival probabilites as we near the final simulation (on_adults 5th data point from the right, on_juveniles 2nd data point from the right)
 
 ### Plotting the effect of increasing Reproduction Rate or Increasing survival rate on Evolutionary rescue
 
@@ -649,140 +643,7 @@ print(summary_table)
 
 ```
 
-### Plotting the population trajectories
-
-you can use this plot to show how the population will develop over time. You can mess around with parameters or simply run it to see that both extinction and rescue do happen.
-
-```{r}
-# libraries needed to plot the population trajectory
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
-# define the parameters under which we want to simulate the population trajectory
-N_j0 <- 50
-N_a0 <- 50
-N_j0M <- 0
-N_a0M <- 0
-R_a <- 2
-R_aM <- 2
-S_j <- 0.2
-S_jM <- 0.2
-S_a <- 0.5
-S_aM <- 0.5
-mu <- 0.01
-t_max <- 1000
-
-
-# having the simulation set as a variable 
-sim_data <- simulate_pop(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max)
-
-#Convert matrix to Dataframe to help analysis
-df <- as.data.frame(sim_data)
-
-# these steps were generated using ai help: The rownames are the Generation numbers. Let's make them a proper column.
-df$Generation <- as.numeric(rownames(df))
-
-# Reshape from Wide to Long format for ggplot
-# This creates a column "Age_Class" (AC1, AC2, etc.) and "Population_Size". 
-
-#pivot_longer syntaxc first define what data you are looking at. here we are looking at df, our data frame. cols defines which columns to convert into the long format. we want to convert our Age class collumns into long format. names_to defines what the new column name should be. 
-
-df_long <- pivot_longer(
-  df, 
-  cols = c("AC1", "AC2", "AC1M", "AC2M"), 
-  names_to = "Age_Class", 
-  values_to = "Population_Size"
-)
-
-ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, linetype = Age_Class)) +
-  geom_line(linewidth = 1) +
-  scale_color_manual(values = c(
-    "AC1" = "lightgreen",
-    "AC2" = "darkgreen",
-    "AC1M" = "red",
-    "AC2M" = "darkred")) +
-  labs(title = "Simulating Evolutionary Rescue with 2 Age classes", x = "Generations", y = "Population Size", color = "Age Classes", linetype = "Age Classes")+
-  scale_linetype_manual(values = c(
-    "AC1" = 1,
-    "AC1M" = 1,
-    "AC2" = 2,
-    "AC2M" = 2))
-  
-
-
-```
-
-### Plotting Comparing the effect of increasing Juvenile Survival rates vs increasing Adults survival rates on Evolutionary rescue.
-
-```{r}
-
-plot_table <- read.csv()
-
-library(ggplot2)
-library(gghighlight)
-library(dplyr)
-library(tidyr)
-plot_table_survcompare <- as.data.frame(plot_table) #converting the table to a data frame
-plot_table_survcompare$S_absolute <- as.numeric(plot_table_survcompare$S_absolute) 
-#values treated as numeric to allow for ggplot to recognize them
-plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`rescue prob.`))
-
-
-Plot_Survcompare <- ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.`, 
-color = ifelse(!is.na(`rescue prob.`) & ac_s == "on_juveniles" & S_absolute == min(S_absolute[ac_s == "on_juveniles" & !is.na(`rescue prob.`)]), "WT Juvenile", #marks the lowest data point for the on_juveniles, this is the data point for the wild type Juvenile
-    ifelse(
-        !is.na(`rescue prob.`) & ac_s == "on_adults" & S_absolute == min(S_absolute[ac_s == "on_adults" & !is.na(`rescue prob.`)]), "WT Adult", #marks the lowest data point for the on_adults, this is the data point for the wild type Adult
-        ac_s)))) +
-  
-  geom_point()+ #we use a scatter plot to plot our data 
-  labs(x = "survival rate", y = "rescue probabability", title = "Comparing Adult mutant survival rates vs Juvenile mutant survival rates", subtitle = "and how they effect Evolutionary rescue", color = "Which age group")+
-  scale_color_manual(values = c("on_adults" = "red",
-                     "on_juveniles" = "lightblue",
-                     "WT Juvenile" = "darkblue",
-                     "WT Adult" = "maroon" ))
-
-  
-print(Plot_Survcompare)
-
-
-#ggsave(Plot_Survcompare, 
-       #filename = "Plot_Survcompare.pdf",
-       #device = "pdf")
-  
-  
-
-```
-
-The parameters used in this simulation are as follows
-
--   N_j0 =50 (Number of Juvenile WT individuals at time point 0)
-
--   N_a0 = 50 (Number of Adult WT individuals at time point 0)
-
--   N_j0M = 0 (Number of Juvenile Mutant individuals at time point 0)
-
--   N_a0M = 0 (Number of Adult Mutant individuals at time point 0)
-
--   R_a = 2 (reproduction rate of WT adult individuals)
-
--   R_aM = 2 (reproduction rate of Mutant adult individuals
-
--   S_j = 0.2 (Survival Rate of Juvenile WT individuals)
-
--   S_a = 0.5 (Survival Rate of Adult WT individuals)
-
--   mu = 0.01 (mutation rate)
-
--   t_max = 1000 (max simulation time)
-
--   no_replicates = 1000 (number of replicates)
-
-Using a Scatter plot we plot the rescue probabilities of the whole population with varying survival rates. The only parameter that varies is the survival rates of either the Adults or the mutants. In this simulations the mutation does not effect the Reproduction rate meaning it is the same as the wildtype R = 0.2. The Wildtypes are the first data points marked in maroon and dark blue. Every data point after these initial points (moving to the left on the x axis) is a mutant.
-
-The First point (left most point) in both the on_juveniles and on_adults graph is the Wild type individual. As you move towards the right on the X axis the survival rate is increased by a factor of 0.05. The Y axis shows the mean rescue probability over 1000 replicates with the specific parameters. We can see a steeper curve when the survival rate of the juveniles is modified compared to when we modify the survival rate of the adults. The highest simulated rescue probability occurs when you double the survival rate of the juveniles rescue probability of 0.754. when we double the survival rate of the adults we observe a lower rescue probability of 0.625. When modifying the juvenile survival rates we see the first increase in rescue probability after 5 increments. compared to the adults when we already observe an increase after 4 increments. In both graphs we observe little drop in survival probabilites as we near the final simulation (on_adults 5th data point from the right, on_juveniles 2nd data point from the right)
-
-## Discussion
+### Discussion
 
 Plot 1.![](Plots/Survival%20comparrison%20Plot%20.png)
 
@@ -855,23 +716,23 @@ The Equation: $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$
 
 The parameters
 
-- $P_{new}$ : Probability of Evolutionary Rescue
+-   $P_{new}$ : Probability of Evolutionary Rescue
 
-- $N_0$: Initial population size
+-   $N_0$: Initial population size
 
-- $u$: mutation rate
+-   $u$: mutation rate
 
-- $s$: selection coefficient (advantage of mutant relative to WT)
+-   $s$: selection coefficient (advantage of mutant relative to WT)
 
-- $r$: decay rate (1-initial growth rate)
+-   $r$: decay rate (1-initial growth rate)
 
 ### How the parameters translate to our model
 
-- Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
+-   Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
 
-- decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
+-   decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
 
-- The other parameters are unchanged in our model and we keep them as they are.
+-   The other parameters are unchanged in our model and we keep them as they are.
 
 ### How to test the equation
 
@@ -883,11 +744,11 @@ The same lambda can be achieved with different matrices. So in our case with dif
 
 The initial code gives a table called "summary_table", which contains:
 
-- **Rescue Probability**
+-   **Rescue Probability**
 
-- **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
+-   **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
 
-- **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
+-   **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
 
 #### Getting the corresponding selection coefficient + initial growth rate
 
