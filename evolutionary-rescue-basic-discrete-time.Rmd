@@ -13,7 +13,6 @@ output:
 install.packages("dplyr")
 install.packages("tidyr")
 install.packages("ggplot2")
-install.packages("gghighlight")
 ```
 
 # Simulate one generation
@@ -68,7 +67,9 @@ simulate_pop <- function(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_a
 
 ```
 
-# pro version of plots by tobias with ggplot()
+## Plotting the population trajectories
+
+you can use this plot to show how the population will develop over time. You can mess around with parameters or simply run it to see that both extinction and rescue do happen.
 
 ```{r}
 
@@ -82,11 +83,15 @@ N_j0M <- 0
 N_a0M <- 0
 R_a <- 2
 R_aM <- 2
+S_j <- 0.2
+S_jM <- 0.2
+S_a <- 0.5
+S_aM <- 0.5
 mu <- 0.01
 t_max <- 1000
 
 
-# having the simulation set as a variable
+# having the simulation set as a variable 
 sim_data <- simulate_pop(N_j0, N_a0,N_j0M, N_a0M, R_a, R_aM, S_j, S_jM, S_a, S_aM, mu, t_max)
 
 #Convert matrix to Dataframe to help analysis
@@ -107,9 +112,6 @@ df_long <- pivot_longer(
   values_to = "Population_Size"
 )
 
-
-print(df_long)
-
 ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, linetype = Age_Class)) +
   geom_line(linewidth = 1) +
   scale_color_manual(values = c(
@@ -117,7 +119,7 @@ ggplot(df_long, aes(x = Generation, y = Population_Size, color = Age_Class, line
     "AC2" = "darkgreen",
     "AC1M" = "red",
     "AC2M" = "darkred")) +
-  labs(title = "Simulating Evolutionary Rescue with 2 Age classes", subtitle = "Mutant Adults with higher survivability" , x = "Generations", y = "Population Size", color = "Age Classes", linetype = "Age Classes")+
+  labs(title = "Simulating Evolutionary Rescue with 2 Age classes", x = "Generations", y = "Population Size", color = "Age Classes", linetype = "Age Classes")+
   scale_linetype_manual(values = c(
     "AC1" = 1,
     "AC1M" = 1,
@@ -216,26 +218,73 @@ colnames(plot_table) <- c("rescue prob.","ac_s","S_absolute")
 
 ```
 
-## plotting the effect of varrying survival coefficients on adults vs juveniles on rescue probabilities
+## Results
+
+### Plotting Comparing the effect of increasing Juvenile Survival rates vs increasing Adults survival rates on Evolutionary rescue.
 
 ```{r}
 library(ggplot2)
 library(gghighlight)
 library(dplyr)
 library(tidyr)
-plot_table_survcompare <- as.data.frame(plot_table)
-plot_table_survcompare$S_absolute <- as.numeric(plot_table_survcompare$S_absolute)
+plot_table_survcompare <- as.data.frame(plot_table) #converting the table to a data frame
+plot_table_survcompare$S_absolute <- as.numeric(plot_table_survcompare$S_absolute) 
+#values treated as numeric to allow for ggplot to recognize them
 plot_table_survcompare$`rescue prob.` <- as.numeric((plot_table_survcompare$`rescue prob.`))
 
 
+Plot_Survcompare <- ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.`, 
+color = ifelse(!is.na(`rescue prob.`) & ac_s == "on_juveniles" & S_absolute == min(S_absolute[ac_s == "on_juveniles" & !is.na(`rescue prob.`)]), "WT Juvenile", #marks the lowest data point for the on_juveniles, this is the data point for the wild type Juvenile
+    ifelse(
+        !is.na(`rescue prob.`) & ac_s == "on_adults" & S_absolute == min(S_absolute[ac_s == "on_adults" & !is.na(`rescue prob.`)]), "WT Adult", #marks the lowest data point for the on_adults, this is the data point for the wild type Adult
+        ac_s)))) +
+  
+  geom_point()+ #we use a scatter plot to plot our data 
+  labs(x = "survival rate", y = "rescue probabability", title = "Comparing Adult mutant survival rates vs Juvenile mutant survival rates", subtitle = "and how they effect Evolutionary rescue", color = "Which age group")+
+  scale_color_manual(values = c("on_adults" = "red",
+                     "on_juveniles" = "lightblue",
+                     "WT Juvenile" = "darkblue",
+                     "WT Adult" = "maroon" ))
 
-ggplot(plot_table_survcompare, aes(x = S_absolute , y = `rescue prob.` , color = ac_s)) +
-  geom_point()+
-  labs(x = "survival rate", y = "rescue probabability", title = "", color = "Which age group")
+  
+print(Plot_Survcompare)
+
+
+#ggsave(Plot_Survcompare, 
+       #filename = "Plot_Survcompare.pdf",
+       #device = "pdf")
   
   
 
 ```
+
+The parameters used in this simulation are as follows
+
+-   N_j0 =50 (Number of Juvenile WT individuals at time point 0)
+
+-   N_a0 = 50 (Number of Adult WT individuals at time point 0)
+
+-   N_j0M = 0 (Number of Juvenile Mutant individuals at time point 0)
+
+-   N_a0M = 0 (Number of Adult Mutant individuals at time point 0)
+
+-   R_a = 2 (reproduction rate of WT adult individuals)
+
+-   R_aM = 2 (reproduction rate of Mutant adult individuals
+
+-   S_j = 0.2 (Survival Rate of Juvenile WT individuals)
+
+-   S_a = 0.5 (Survival Rate of Adult WT individuals)
+
+-   mu = 0.01 (mutation rate)
+
+-   t_max = 1000 (max simulation time)
+
+-   no_replicates = 1000 (number of replicates)
+
+Using a Scatter plot we plot the rescue probabilities of the whole population with varying survival rates. The only parameter that varies is the survival rates of either the Adults or the mutants. In this simulations the mutation does not effect the Reproduction rate meaning it is the same as the wildtype R = 0.2. The Wildtypes are the first data points marked in maroon and dark blue. Every data point after these initial points (moving to the left on the x axis) is a mutant.
+
+The First point (left most point) in both the on_juveniles and on_adults graph is the Wild type individual. As you move towards the right on the X axis the survival rate is increased by a factor of 0.05. The Y axis shows the mean rescue probability over 1000 replicates with the specific parameters. We can see a steeper curve when the survival rate of the juveniles is modified compared to when we modify the survival rate of the adults. The highest simulated rescue probability occurs when you double the survival rate of the juveniles rescue probability of 0.754. when we double the survival rate of the adults we observe a lower rescue probability of 0.625. When modifying the juvenile survival rates we see the first increase in rescue probability after 5 increments. compared to the adults when we already observe an increase after 4 increments. In both graphs we observe little drop in survival probabilites as we near the final simulation (on_adults 5th data point from the right, on_juveniles 2nd data point from the right)
 
 ## comparing mutated reproduction rate vs mutated survival rate, combination of reproduction rates and survivability rates.
 
@@ -360,7 +409,9 @@ summary_table[1,"Current_S_Adults"]
 current_l_matrix_Mut
 ```
 
-# do the new heat map with isoclines with gemini
+## Results
+
+### Plotting the effect of increasing Reproduction Rate or Increasing survival rate on Evolutionary rescue
 
 ```{r}
 library(ggplot2)
@@ -420,12 +471,13 @@ ggplot(heatmap_df, aes(x = Current_R, y = Current_S_Adults)) +
   theme(panel.grid = element_blank())
 ```
 
+To help visualize the comparison of mutant survival rates and mutant reproduction rates we use a heatmap. The X axis shows increasing reproduction rates from left to right. the Y axis shows increasing Survival rates of both juvenile and wild type individuals. The gradient shows the rescue probability with lighter colors showing higher rescue probabilities for the whole population. We See a gradual increase when moving along both axis. The 4 dashed lines are growth isoclines. All fields that are on these isoclines have the same total growth rate.
+
 # do the heat map with isoclines with gemini using exact lambdas
 
 ```{r}
 
 ```
-
 
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
@@ -436,7 +488,7 @@ library(ggplot2)
 # 1. Format the data frame 
 # (Assuming your table now has these 5 columns based on your partner's updates)
 heatmap_df <- as.data.frame(summary_table)
-colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S_Adults", "Current_S_Juveniles", "lambda")
+colnames(heatmap_df) <- c("rescue_prob", "Current_R", "Current_S_Adults", "Current_S_Juveniles")
 
 # Ensure all columns are numeric so the plot axes are continuous, not categorical
 heatmap_df[] <- lapply(heatmap_df, as.numeric)
@@ -525,6 +577,30 @@ print(summary_table)
 
 ```
 
+## Discussion
+
+Plot 1.![](Plots/Survival%20comparrison%20Plot%20.png)
+
+Our predicitons varried for our first question of wether mutant Adult Survival rates or mutant juvenile survival rates had a more substantial effect on increasing evolutionary rescue probability. predicted that the the survival probabilites would be greater if you increased the survival rates of the juveniles.
+
+We are unsure if the observed Steeper curve when increasing juvenile survivalbility is someting we can draw conclusions on. This curve will naturally be steeper since the steps taken when increasing the survival rate depend on the starting "WT" survival rates. Since we use a multiplication and do not iterate over fixed value. This means that for example the first increase in survival rate for juveniles is $0.2 * 1.05 = 0.21$ where as the first step when increasing the adult survival rates is $0.5 * 1.05 = 0.525$ . The steps in the juvenile curve are smaller on the x axis. Although we are increasing both values by the same factor the steps at which they increase are different. This can lead to a "skew" in our results.
+
+That being said 2 data points that are interesting to compare are the case where the survival rates are doubled in juveniles or adults. Not only do we see that doubling the survival rate of the juveniles has the highest rescue probability, the 6 highest rescue probabilities all occur at the top end of the mutated survival rates (Rescue probabilities of 0.754, 0.716, 0.713, 0.693, 0.640). One conclusion from these results could be that helping preserve the juvenile population to allow for a mutation to arise would make more sense from a conservation perspective, as that mutation (if strong enough) would have a higher probability of rescuing the population.
+
+A very interesting data point is the final data point in the on_adults graph. This data point has a mutated survival rate double that of the WT and since our WT population has an adult survival rate of 0.5 this means in this mutated population the adult survival rate is 1.0 meaning ALL adults survive to become adults again. It is interesting to see that despite this case the rescue probability still only lies around 0.625 so 60% of the chance to be rescued under these conditions. As the 100% survival rate is biologically rather unrealistic we can look at 1 data point before that, where the adult survival rate lies at 0.975. Under these simulated parameters the population "only" has rescue probability of around 0.619 again around that 60% mark. These data points are interesting from a conservation perspective.
+
+Imagine a hypothetical scenario based on our simulations. If you had a hypothetical population where a mutant adult has been introduced which has a survival rate of 0.975 to survive. You as a conervationist are using the survival rates of adults as a measure to deem if a population can be considered rescued or not. According to our model you would observe the vast majority of your Adult population surviving and may be tempted to not bother with any consevation methods that would aid either the juveniles sruvival rates or the reproduciton of the adults. In the case where you would maybe still have the resources to keep aiding the population you may decide not to use them as the metric you use to deem a population stable is simply the survival rates of the adults, but in the long run there is still a 40% chance that this population may still go extinct. It would therefore still be important if you had the resources to consider aiding other parts of the population to increase the chances of survival even more.
+
+It is important to not a "doubling" of survival rates is biologically unrealistic. A singular mutation would likely not be able to have such a large effect on the survival rates of juvenile individuals.
+
+Plot 2.
+
+The goal of our heatmap was to see wether increasing either reproduction rate or survival rate had a greater effect on the rescue probability. We are comparing the function of this mutation. it allows us to compare low reproduction rates with high survival rates, high reproduction rates with low survival rates etc. We expected that a mutation of one function may be able to compensate another, for example if you have an introduced mutation that only minimally effects the survival rate if having a mutation that greatly effects the reproduction rate can compensate this minimal effect.
+
+Our predictions:
+
+What we can conclude from the general gradient trend in our graph is a linear relationship as mutant reproduction rates increase and mutated survival rates increase the survival probability increases with it. neither the survival rate nor the reproduction rate seems to have a "greater" effect. wether the mutations function effect survival or reproduction we can not conclude that 1 increases rescue more than the other.
+
 ## matrix thing to keep the lambda constant
 
 ```{r}
@@ -574,23 +650,23 @@ The Equation: $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$
 
 The parameters
 
-- $P_{new}$ : Probability of Evolutionary Rescue
+-   $P_{new}$ : Probability of Evolutionary Rescue
 
-- $N_0$: Initial population size
+-   $N_0$: Initial population size
 
-- $u$: mutation rate
+-   $u$: mutation rate
 
-- $s$: selection coefficient (advantage of mutant relative to WT)
+-   $s$: selection coefficient (advantage of mutant relative to WT)
 
-- $r$: decay rate (1-initial growth rate)
+-   $r$: decay rate (1-initial growth rate)
 
 ### How the parameters translate to our model
 
-- Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
+-   Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
 
-- decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
+-   decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
 
-- The other parameters are unchanged in our model and we keep them as they are.
+-   The other parameters are unchanged in our model and we keep them as they are.
 
 ### How to test the equation
 
@@ -602,11 +678,11 @@ The same lambda can be achieved with different matrices. So in our case with dif
 
 The initial code gives a table called "summary_table", which contains:
 
-- **Rescue Probability**
+-   **Rescue Probability**
 
-- **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
+-   **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
 
-- **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
+-   **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
 
 #### Getting the corresponding selection coefficient + initial growth rate
 
