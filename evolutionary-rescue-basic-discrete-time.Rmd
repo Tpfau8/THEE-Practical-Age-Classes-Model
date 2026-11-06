@@ -35,7 +35,7 @@ We model a haploid population with two distinct life stages: juveniles and adult
 The model relies on the following parameters and variables:
 
 | Parameter / Variable | Description |
-|:---|:---|
+|:-----------------------------------|:-----------------------------------|
 | `N_j0` / `N_a0` | Initial population size of wild-type juveniles / adults |
 | `N_j0M` / `N_a0M` | Initial population size of mutant juveniles / adults |
 | `R_a` / `R_aM` | Reproduction rate (offspring per individual) of wild-type / mutant adults |
@@ -44,7 +44,7 @@ The model relies on the following parameters and variables:
 | `mu` | Mutation rate per generation |
 | `t_max` | Maximum number of generations to simulate |
 
-### installing packages for plotting
+### installing packages for plotting (currently put as comments for knitting)
 
 ```{r}
 #install.packages("dplyr")
@@ -238,7 +238,7 @@ t_max <- 1000
 
 
 # Simulation repetitions
-no_replicates <- 100
+no_replicates <- 1000
 
 #data table initializing
 data_table <- c()
@@ -353,7 +353,7 @@ current_l_matrix_Mut
 
 ### Plotting the population trajectories
 
-you can use this plot to show how the population will develop over time. You can mess around with parameters or simply run it to see that both extinction and rescue do happen.
+You can use this plot to show how the population will develop over time. You can mess around with parameters or simply run it to see that both extinction and rescue do happen. We do not use this plot to draw any conclusions or discuss results, it simply is here to help with visualization.
 
 ```{r}
 # libraries needed to plot the population trajectory
@@ -535,15 +535,22 @@ ggplot(heatmap_df, aes(x = Current_R, y = Current_S_Adults)) +
     name = "Rescue\nProbability"
   ) +
   labs(
-    title = "Evolutionary Rescue Probability with Growth Rate Isoclines",
-    subtitle = "Solid cyan line: lambda = 1.0 | Dashed black lines: lambda isoclines (step = 0.05)",
+    title = "What is the Effect of increased mutant Reproduction rates compared to increased mutant Survival rate 
+on Evolutionary Rescue Probability",
+    subtitle = "Growht rate Isoclines: Solid cyan line: lambda = 1.0 | Dashed black lines: lambda isoclines step (0.05)",
     x = "Mutant Reproduction Rate (R_aM)"
   ) +
   theme_minimal() +
   theme(panel.grid = element_blank())
 ```
 
-To help visualize the comparison of mutant survival rates and mutant reproduction rates we use a heatmap. The X axis shows increasing reproduction rates from left to right. the Y axis shows increasing Survival rates of both juvenile and wild type individuals. The gradient shows the rescue probability with lighter colors showing higher rescue probabilities for the whole population. We See a gradual increase when moving along both axis. The 4 dashed lines are growth isoclines. All fields that are on these isoclines have the same total growth rate.
+To help visualize the comparison of mutant survival rates and mutant reproduction rates we use a heatmap. The X axis shows increasing reproduction rates from left to right. the Y axis shows increasing Survival rates of both juvenile and wild type individuals.
+
+The gradient shows the rescue probability for the whole population. The lighter the color shows a higher rescue probability.
+
+We See a gradual increase when moving along both axis. The color gradient seems more patchy in the top right corner compared to the bottom left corner.
+
+The 4 dashed lines are growth isoclines showing the absolute growth rate of the population when using the combination or reproduction rates and survival rates. All fields that are on these isoclines have the same total growth rate. The isocline marked in a cyan color is the threshold where the growth rate is 1.
 
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 
@@ -659,13 +666,21 @@ Imagine a hypothetical scenario based on our simulations. If you had a hypotheti
 
 It is important to not a "doubling" of survival rates is biologically unrealistic. A singular mutation would likely not be able to have such a large effect on the survival rates of juvenile individuals.
 
-Plot 2.
+Plot 2.![](Plots/Survival%20Reproduction%20comparison%20Plot.png)
 
-The goal of our heatmap was to see wether increasing either reproduction rate or survival rate had a greater effect on the rescue probability. We are comparing the function of this mutation. it allows us to compare low reproduction rates with high survival rates, high reproduction rates with low survival rates etc. We expected that a mutation of one function may be able to compensate another, for example if you have an introduced mutation that only minimally effects the survival rate if having a mutation that greatly effects the reproduction rate can compensate this minimal effect.
+The goal of our heat map was to see whether increasing either reproduction rate or survival rate had a greater effect on the rescue probability. Compared to our first analysis, here we ask the question of whether the function of the mutation / where the mutation acts matters.
 
-Our predictions:
+A heat map is helpful as it allows us to compare low reproduction rates with high survival rates, high reproduction rates with low survival rates etc. We expected that a mutation of one function may be able to compensate another, for example if you have an introduced mutation that only minimally effects the survival rate if having a mutation that greatly effects the reproduction rate can compensate this minimal effect. The other interesting data we can observe in our graph is how mutant reproduction rates effect the population as before in our first analysis we only changed the survival rates and our mutant population had the same reproduction rates as the wild type.
 
-What we can conclude from the general gradient trend in our graph is a linear relationship as mutant reproduction rates increase and mutated survival rates increase the survival probability increases with it. neither the survival rate nor the reproduction rate seems to have a "greater" effect. wether the mutations function effect survival or reproduction we can not conclude that 1 increases rescue more than the other.
+What we can conclude from the general gradient trend in our graph is a somewhat linear relationship. As mutant reproduction rates increase and mutated survival rates increase, the survival probability increases with it. This could indicate that in our biological system having an increased mutant reproduction rate has a similar effect on evolutionary rescue as an increased mutant survival rate.
+
+Neither the survival rate nor the reproduction rate seems to have a "greater" effect. A conclusion you could draw from this is that accumulating beneficial mutaitons that act on different functions is more beneficial for evolutionary rescue than if a mutation arises with a strong effect on one function.
+
+The isoclines help us with this conclusion as all the rectangles along an isocline have the same overall growth rate. if we follow an isocline we see that the differences in color are very minimal. If it were the case that Reproduction rate had a more substantial effect than if you were to follow an isocline (say the dashed isocline above the cyan isocline) then as you move along towards the bottom right corner you should see the colors become brighter. In our simulations we do not see any trend like this but instead see a more constant color gradient.
+
+-   points still to be discussed
+
+    is there more "high rescue prob" squares in one of the axis? what does this say about our model? what could changing the model do / adding more age classes. more of a discussion on what could be done in the future.
 
 ## matrix thing to keep the lambda constant
 
