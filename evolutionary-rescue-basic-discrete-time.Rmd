@@ -424,6 +424,8 @@ We then construct a heatmap of rescue probabilities overlaid with analytical gro
 # do the plots for the analysis of changed R vs.changed S. Heat Map
 library(ggplot2)
 
+summary_table <- read.csv("Data/summary_table.csv")
+
 # 1. Format the data frame 
 # (Assuming your table now has these 5 columns based on your partner's updates)
 heatmap_df <- as.data.frame(summary_table)
