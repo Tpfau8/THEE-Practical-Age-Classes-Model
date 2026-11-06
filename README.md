@@ -1,4 +1,4 @@
-# THEE Practical Age Classes model 
+# THEE Practical Age Classes model  (read me draft)
 This project was conducted as part of the **Theoretical ecology practical Fall semester 2026** by
 ## Introduction 
 
