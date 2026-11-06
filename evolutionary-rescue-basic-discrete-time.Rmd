@@ -505,7 +505,7 @@ The 4 dashed lines are growth isoclines showing the absolute growth rate of the 
 
 Plot 1.![](Plots/Survival%20comparrison%20Plot%20.png)
 
-Our predicitons varried for our first question of wether mutant Adult Survival rates or mutant juvenile survival rates had a more substantial effect on increasing evolutionary rescue probability. predicted that the the survival probabilites would be greater if you increased the survival rates of the juveniles.
+Our predicitons varried for our first question of wether mutant Adult Survival rates or mutant juvenile survival rates had a more substantial effect on increasing evolutionary rescue probability.
 
 We are unsure if the observed Steeper curve when increasing juvenile survivalbility is someting we can draw conclusions on. This curve will naturally be steeper since the steps taken when increasing the survival rate depend on the starting "WT" survival rates. Since we use a multiplication and do not iterate over fixed value. This means that for example the first increase in survival rate for juveniles is $0.2 * 1.05 = 0.21$ where as the first step when increasing the adult survival rates is $0.5 * 1.05 = 0.525$ . The steps in the juvenile curve are smaller on the x axis. Although we are increasing both values by the same factor the steps at which they increase are different. This can lead to a "skew" in our results.
 
@@ -529,9 +529,19 @@ Neither the survival rate nor the reproduction rate seems to have a "greater" ef
 
 The isoclines help us with this conclusion as all the rectangles along an isocline have the same overall growth rate. if we follow an isocline we see that the differences in color are very minimal. If it were the case that Reproduction rate had a more substantial effect than if you were to follow an isocline (say the dashed isocline above the cyan isocline) then as you move along towards the bottom right corner you should see the colors become brighter. In our simulations we do not see any trend like this but instead see a more constant color gradient.
 
-- points still to be discussed
+### **points still to be added to discussion** 
 
-  is there more "high rescue prob" squares in one of the axis? what does this say about our model? what could changing the model do / adding more age classes. more of a discussion on what could be done in the future.
+-   CLEAR QUESTION –\> ANSWER. at the moment the discussion is more general ideas not yet answering our question. We would like to do this together and have yet to have time to do this
+
+-   our hypothesis´s (is it hypothesy? whats the plural of hypothesis)
+
+-   is there more "high rescue prob" squares in one of the axis? is this something we can conclude
+
+-    what does this say about our model? can we explain why data was simulated the way it was
+
+-   what could changing the model do / adding more age classes. more of a discussion on what could be done in the future.
+
+-   heat map plot with exact numbers of rescue probabilities along with colors
 
 # Stuff that we are not shure about yet if and how to include in the report
 
@@ -742,23 +752,23 @@ The Equation: $P_{new} = 1 - e^{-\frac{2N_0 u (s - r)}{r}}$
 
 The parameters
 
-- $P_{new}$ : Probability of Evolutionary Rescue
+-   $P_{new}$ : Probability of Evolutionary Rescue
 
-- $N_0$: Initial population size
+-   $N_0$: Initial population size
 
-- $u$: mutation rate
+-   $u$: mutation rate
 
-- $s$: selection coefficient (advantage of mutant relative to WT)
+-   $s$: selection coefficient (advantage of mutant relative to WT)
 
-- $r$: decay rate (1-initial growth rate)
+-   $r$: decay rate (1-initial growth rate)
 
 ### How the parameters translate to our model
 
-- Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
+-   Selection coefficient ($s$): This would be the lambda of the Mutant Leslie Matrix minus the lambda of the WT-Leslie Matrix.
 
-- decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
+-   decay rate ($r$): 1 - The lambda of the WT-Leslie Matrix
 
-- The other parameters are unchanged in our model and we keep them as they are.
+-   The other parameters are unchanged in our model and we keep them as they are.
 
 ### How to test the equation
 
@@ -770,11 +780,11 @@ The same lambda can be achieved with different matrices. So in our case with dif
 
 The initial code gives a table called "summary_table", which contains:
 
-- **Rescue Probability**
+-   **Rescue Probability**
 
-- **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
+-   **repro_multiplie**r: A number higher than 1 with which the reproduction rate of the WT-Adults is multiplied to get the reproduction rate of the Mutant-Adults. The initial reproduction rate was 2.
 
-- **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
+-   **surv_multiplier**: A number higher than 1 with which the survival rates of the WT-Adults and Juveniles is multiplied to get the survival rates of the Mutant-Adults and Juveniles. The initial survival rates were 0.2 for the juveniles and 0.5 for the adults.
 
 #### Getting the corresponding selection coefficient + initial growth rate
 
